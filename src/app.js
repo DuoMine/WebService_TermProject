@@ -7,7 +7,8 @@ import RedisStore from "rate-limit-redis";
 import { redis } from "./config/redis.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
-
+import { requireAuth } from "./middlewares/requireAuth.js";
+import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
 
 const app = express();
@@ -45,6 +46,10 @@ app.use(
 app.get("/", (req, res) => res.json({ ok: true }));
 
 app.use("/health", healthRouter);
+app.use("/auth", (req, res, next) => {
+  if (req.method === "GET" && req.path === "/me") return requireAuth(req, res, next);
+  return next();
+}, authRouter);
 
 // TODO: auth/users/workspaces/projects/tasks/comments/tags/stats 라우터 연결
 
