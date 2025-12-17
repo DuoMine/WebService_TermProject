@@ -30,10 +30,10 @@ services:
       retries: 30
 
   app:
-    build: .
-    env_file: .env
+    build: ./backend
+    env_file: ./backend/.env
     volumes:
-      - .:/app
+      -  ./backend:/app
       - /app/node_modules
     depends_on:
       mysql:
@@ -42,6 +42,7 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+
 volumes:
   mysql-data:
   redis-data:

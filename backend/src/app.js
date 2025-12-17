@@ -10,6 +10,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import { requireAuth } from "./middlewares/requireAuth.js";
 import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
+import authSocialRouter from "./routes/authSocial.js";
 
 const app = express();
 
@@ -45,12 +46,11 @@ app.use(
 
 app.get("/", (req, res) => res.json({ ok: true }));
 
-app.use("/health", healthRouter);
-app.use("/auth", (req, res, next) => {
+app.use("/api/health", healthRouter);
+app.use("/api/auth", (req, res, next) => {
   if (req.method === "GET" && req.path === "/me") return requireAuth(req, res, next);
   return next();
-}, authRouter);
-
+}, authRouter, authSocialRouter);
 // TODO: auth/users/workspaces/projects/tasks/comments/tags/stats 라우터 연결
 
 app.use(errorHandler);

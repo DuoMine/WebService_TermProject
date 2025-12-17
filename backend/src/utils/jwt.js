@@ -49,8 +49,8 @@ export function refreshTtlSeconds() {
 export function getAccessCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // ✅ 로컬: lax
+    secure: process.env.NODE_ENV === "production",                 // ✅ 로컬: false
     maxAge: accessTtlSeconds() * 1000,
     path: "/",
   };
@@ -59,8 +59,8 @@ export function getAccessCookieOptions() {
 export function getRefreshCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // ✅ 로컬: lax
+    secure: process.env.NODE_ENV === "production",                 // ✅ 로컬: false  
     maxAge: refreshTtlSeconds() * 1000,
     path: "/auth", // refresh/logout만 쓰게 범위 제한
   };
