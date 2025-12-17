@@ -14,7 +14,7 @@ export function defineUserRefreshToken(sequelize) {
     {
       tableName: "user_refresh_tokens",
       indexes: [{ fields: ["user_id"] }, { fields: ["expires_at"] }],
-      paranoid: false, // 토큰은 deleted_at 대신 revoked_at로 관리해도 됨
+      paranoid: false,
       timestamps: true,
       createdAt: "created_at",
       updatedAt: "updated_at",

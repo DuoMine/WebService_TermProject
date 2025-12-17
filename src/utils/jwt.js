@@ -18,12 +18,12 @@ function parseExpiresToSeconds(raw, fallbackSeconds) {
 export const ACCESS_COOKIE_NAME = "access_token";
 export const REFRESH_COOKIE_NAME = "refresh_token";
 
-export function signAccessToken(payload) {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES });
+export function signAccessToken({ sub, role }) {
+  return jwt.sign({ sub: String(sub), role }, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES });
 }
 
-export function signRefreshToken(payload) {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES });
+export function signRefreshToken({ sub, role }) {
+  return jwt.sign({ sub: String(sub), role, jti: crypto.randomUUID(), }, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES });
 }
 
 export function verifyAccessToken(token) {
