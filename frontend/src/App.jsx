@@ -1,7 +1,9 @@
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "./firebaseClient";
+import { useAuth } from "./auth/AuthContext";
 
 export default function App() {
+  console.log("APP MOUNT");
   const onGoogle = async () => {
     console.log("CLICKED");
     alert("clicked");
@@ -18,7 +20,11 @@ export default function App() {
         credentials: "include",
         body: JSON.stringify({ idToken }),
       });
-
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(`backend ${r.status}: ${t}`);
+      }
+      await refreshMe();
       const text = await r.text();
       console.log("BACKEND", r.status, text);
     } catch (e) {
@@ -26,10 +32,10 @@ export default function App() {
       alert(String(e?.message ?? e));
     }
   };
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refreshMe } = useAuth();
 
   if (loading) return <div style={{ padding: 24 }}>loading...</div>;
-
+  console.log("APP RENDER", { loading, user });
   return (
     <div style={{ padding: 24 }}>
       <button type="button" onClick={onGoogle}>Google Login</button>

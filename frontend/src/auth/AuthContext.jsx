@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const me = await api("/api/auth/me");
+        const me = await api("/api/users/me");
         setUser(me?.user ?? me); // 백엔드 응답 구조에 따라 둘 중 하나가 맞음
       } catch (e) {
         if (e.status !== 401) console.error(e);
@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     refreshMe: async () => {
-      const me = await api("/api/auth/me");
+      const me = await api("/api/users/me");
       setUser(me?.user ?? me);
       return me;
     },

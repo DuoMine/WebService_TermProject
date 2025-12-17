@@ -1,4 +1,4 @@
-// src/routes/auth.js
+// src/routes/api/auth.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { models, sequelize } from "../models/index.js";
@@ -43,7 +43,7 @@ function userPublic(u) {
 }
 
 /**
- * POST /auth/signup
+ * POST /api/auth/signup
  * body: { email, password, name }
  */
 router.post("/signup", async (req, res) => {
@@ -73,13 +73,13 @@ router.post("/signup", async (req, res) => {
 
     return sendOk(res, { message: "signup ok", user: userPublic(u) }, 201);
   } catch (e) {
-    console.error("POST /auth/signup error:", e);
+    console.error("POST /api/auth/signup error:", e);
     return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to signup");
   }
 });
 
 /**
- * POST /auth/login
+ * POST /api/auth/login
  * body: { email, password }
  * - access/refresh 쿠키 세팅
  */
@@ -119,13 +119,13 @@ router.post("/login", async (req, res) => {
 
     return sendOk(res, { message: "login ok", user: userPublic(u) });
   } catch (e) {
-    console.error("POST /auth/login error:", e);
+    console.error("POST /api/auth/login error:", e);
     return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to login");
   }
 });
 
 /**
- * POST /auth/refresh
+ * POST /api/auth/refresh
  * - refresh 쿠키 검증 + DB 토큰 해시 확인
  * - refresh token rotation: 기존 토큰 revoked 후 새 refresh 발급/저장
  */
@@ -202,7 +202,7 @@ router.post("/refresh", async (req, res) => {
 });
 
 /**
- * POST /auth/logout
+ * POST /api/auth/logout
  * - refresh token revoke + 쿠키 제거
  */
 router.post("/logout", async (req, res) => {
@@ -218,37 +218,14 @@ router.post("/logout", async (req, res) => {
     }
 
     res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/auth" });
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
 
     return sendOk(res, { message: "logout ok" });
   } catch (e) {
-    console.error("POST /auth/logout error:", e);
+    console.error("POST /api/auth/logout error:", e);
     return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to logout");
   }
 });
 
-/**
- * GET /auth/me
- * - access token 필요 (requireAuth에서 req.auth 세팅됨)
- */
-router.get("/me", async (req, res) => {
-  // 여기서는 requireAuth 미들웨어를 라우터 연결 시 걸어줄 거라 req.auth 사용 가능
-  const userId = req.auth?.userId;
-  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
-
-  const u = await User.findOne({ where: { id: userId } });
-  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
-  return sendOk(res, { user: userPublic(u) });
-});
-
-/**
- * (다음 단계) 소셜 로그인 endpoints - 일단 501로 막아둠
- */
-router.get("/google", (req, res) => {
-  return sendError(res, 501, "NOT_IMPLEMENTED", "google oauth not implemented yet");
-});
-router.post("/firebase", (req, res) => {
-  return sendError(res, 501, "NOT_IMPLEMENTED", "firebase auth not implemented yet");
-});
 
 export default router;

@@ -11,6 +11,7 @@ import { requireAuth } from "./middlewares/requireAuth.js";
 import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
 import authSocialRouter from "./routes/authSocial.js";
+import usersRouter from "./routes/users.js";
 
 const app = express();
 
@@ -47,10 +48,8 @@ app.use(
 app.get("/", (req, res) => res.json({ ok: true }));
 
 app.use("/api/health", healthRouter);
-app.use("/api/auth", (req, res, next) => {
-  if (req.method === "GET" && req.path === "/me") return requireAuth(req, res, next);
-  return next();
-}, authRouter, authSocialRouter);
+app.use("/api/auth", authRouter, authSocialRouter);
+app.use("/api/users", usersRouter);
 // TODO: auth/users/workspaces/projects/tasks/comments/tags/stats 라우터 연결
 
 app.use(errorHandler);
