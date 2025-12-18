@@ -16,12 +16,14 @@ CREATE INDEX idx_users_status ON users(status);
 CREATE TABLE IF NOT EXISTS user_providers (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
-  provider ENUM('GOOGLE','FIREBASE') NOT NULL,
+  provider ENUM('KAKAO','FIREBASE') NOT NULL,
   provider_uid VARCHAR(191) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
   UNIQUE KEY uq_provider (provider, provider_uid),
   UNIQUE KEY uq_user_provider (user_id, provider),
-  CONSTRAINT fk_user_providers_user FOREIGN KEY (user_id) REFERENCES users(id)
+  CONSTRAINT fk_user_providers_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS user_refresh_tokens (
@@ -35,7 +37,7 @@ CREATE TABLE IF NOT EXISTS user_refresh_tokens (
   UNIQUE KEY uq_token_hash (token_hash),
   INDEX idx_user_tokens_user (user_id),
   INDEX idx_user_tokens_expires (expires_at),
-  CONSTRAINT fk_refresh_user FOREIGN KEY (user_id) REFERENCES users(id)
+  CONSTRAINT fk_refresh_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS workspaces (

@@ -62,6 +62,6 @@ export function getRefreshCookieOptions() {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // ✅ 로컬: lax
     secure: process.env.NODE_ENV === "production",                 // ✅ 로컬: false  
     maxAge: refreshTtlSeconds() * 1000,
-    path: "/auth", // refresh/logout만 쓰게 범위 제한
+    path: "/api/auth", // refresh/logout만 쓰게 범위 제한
   };
 }
