@@ -17,6 +17,64 @@ function userPublic(u) {
   };
 }
 
+// User
+
+/**
+ * GET /api/users/me
+ * - access token 필요
+ */
+router.get("/me", requireAuth, async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+
+  const u = await User.findOne({ where: { id: userId } });
+  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+  return sendOk(res, { user: userPublic(u) });
+});
+
+/**
+ * PATCH /api/users/me
+ * - access token 필요
+ * - name 수정
+ */
+router.patch("/me", requireAuth, async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string" || name.trim().length < 2) {
+    return sendError(res, 400, "INVALID_NAME", "name must be at least 2 chars");
+  }
+
+  const u = await User.findOne({ where: { id: userId } });
+  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+
+  u.name = name.trim();
+  await u.save();
+
+  return sendOk(res, { user: userPublic(u) });
+});
+
+/**
+ * DELETE /api/users/me
+ * - access token 필요
+ */
+router.delete("/me", requireAuth, async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+
+  const u = await User.findOne({ where: { id: userId } });
+  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+
+  u.status = "DELETED";
+  await u.save();
+
+  return sendOk(res, { message: "USER_DELETED" });
+});
+
+// Admin
+
 /**
  * POST /api/users
  * - ADMIN only
@@ -125,60 +183,6 @@ router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   return sendOk(res, { message: "USER_DELETED" });
 });
 
-// users/me
 
-/**
- * GET /api/users/me
- * - access token 필요
- */
-router.get("/me", requireAuth, async (req, res) => {
-  const userId = req.auth?.userId;
-  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
-
-  const u = await User.findOne({ where: { id: userId } });
-  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
-  return sendOk(res, { user: userPublic(u) });
-});
-
-/**
- * PATCH /api/users/me
- * - access token 필요
- * - name 수정
- */
-router.patch("/me", requireAuth, async (req, res) => {
-  const userId = req.auth?.userId;
-  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
-
-  const { name } = req.body;
-
-  if (!name || typeof name !== "string" || name.trim().length < 2) {
-    return sendError(res, 400, "INVALID_NAME", "name must be at least 2 chars");
-  }
-
-  const u = await User.findOne({ where: { id: userId } });
-  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
-
-  u.name = name.trim();
-  await u.save();
-
-  return sendOk(res, { user: userPublic(u) });
-});
-
-/**
- * DELETE /api/users/me
- * - access token 필요
- */
-router.delete("/me", requireAuth, async (req, res) => {
-  const userId = req.auth?.userId;
-  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
-
-  const u = await User.findOne({ where: { id: userId } });
-  if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
-
-  u.status = "DELETED";
-  await u.save();
-
-  return sendOk(res, { message: "USER_DELETED" });
-});
 
 export default router;
