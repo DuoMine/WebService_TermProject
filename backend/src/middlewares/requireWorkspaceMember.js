@@ -3,42 +3,62 @@ import { models } from "../models/index.js";
 import { sendError } from "../utils/http.js";
 
 /**
- * 사용법:
- * router.get("/workspaces/:id", requireAuth, requireWorkspaceMember({ allowAdmin: true }), ...)
- * req.ws = { workspaceId, memberRole } 세팅
+ * 워크스페이스 멤버 여부만 체크
+ * - ADMIN은 우회 가능
+ * - 통과 시 req.workspace 세팅
  */
 export function requireWorkspaceMember({ allowAdmin = true } = {}) {
   return async (req, res, next) => {
     const userId = req.auth?.userId;
     const role = req.auth?.role;
-    const workspaceId = parseInt(req.params.id ?? req.params.workspaceId, 10);
+    const workspaceId = Number(req.params.workspaceId ?? req.params.id);
 
-    if (!workspaceId) return sendError(res, 400, "BAD_REQUEST", "invalid workspaceId");
     if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+    if (!workspaceId) return sendError(res, 400, "BAD_REQUEST", "invalid workspaceId");
 
+    // 전역 ADMIN 우회
     if (allowAdmin && role === "ADMIN") {
-      req.ws = { workspaceId, memberRole: "ADMIN" };
+      const ws = await models.Workspace.findByPk(workspaceId);
+      if (!ws) return sendError(res, 404, "NOT_FOUND", "workspace not found");
+      req.workspace = ws;
       return next();
     }
 
-    const m = await models.WorkspaceMember.findOne({
+    const ws = await models.Workspace.findByPk(workspaceId);
+    if (!ws) return sendError(res, 404, "NOT_FOUND", "workspace not found");
+
+    const member = await models.WorkspaceMember.findOne({
       where: { workspace_id: workspaceId, user_id: userId },
     });
 
-    if (!m) return sendError(res, 403, "FORBIDDEN", "not a workspace member");
+    if (!member) {
+      return sendError(res, 403, "FORBIDDEN", "not a workspace member");
+    }
 
-    req.ws = { workspaceId, memberRole: m.member_role };
+    req.workspace = ws;
     return next();
   };
 }
 
+/**
+ * 워크스페이스 OWNER 체크
+ * - owner_id 단일 기준
+ */
 export function requireWorkspaceOwner({ allowAdmin = true } = {}) {
-  return async (req, res, next) => {
+  return (req, res, next) => {
+    const userId = req.auth?.userId;
     const role = req.auth?.role;
+
     if (allowAdmin && role === "ADMIN") return next();
 
-    const memberRole = req.ws?.memberRole;
-    if (memberRole !== "OWNER") return sendError(res, 403, "FORBIDDEN", "workspace owner only");
+    if (!req.workspace) {
+      return sendError(res, 500, "INTERNAL_ERROR", "workspace not loaded");
+    }
+
+    if (req.workspace.owner_id !== userId) {
+      return sendError(res, 403, "FORBIDDEN", "workspace owner only");
+    }
+
     return next();
   };
 }

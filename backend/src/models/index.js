@@ -98,4 +98,12 @@ Tag.belongsToMany(Task, {
   as: "tasks",
 });
 
+// TaskTag -> Tag / TaskTag -> Task (include 지원)
+TaskTag.belongsTo(Tag, { foreignKey: "tag_id", as: "tag" });
+Tag.hasMany(TaskTag, { foreignKey: "tag_id", as: "taskTags" });
+
+TaskTag.belongsTo(Task, { foreignKey: "task_id", as: "task" });
+Task.hasMany(TaskTag, { foreignKey: "task_id", as: "taskTags" });
+
+
 export { sequelize };

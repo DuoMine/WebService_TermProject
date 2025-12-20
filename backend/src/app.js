@@ -12,7 +12,11 @@ import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
 import authSocialRouter from "./routes/authSocial.js";
 import usersRouter from "./routes/users.js";
-
+import workspacesRouter from "./routes/workspaces.js";
+import projectsRouter from "./routes/projects.js";
+import tasksRouter from "./routes/tasks.js";
+import commentsRouter from "./routes/comments.js";
+import tagsRouter from "./routes/tags.js";
 const app = express();
 
 app.use(
@@ -48,9 +52,28 @@ app.use(
 app.get("/", (req, res) => res.json({ ok: true }));
 
 app.use("/api/health", healthRouter);
+
 app.use("/api/auth", authRouter, authSocialRouter);
 app.use("/api/users", usersRouter);
-// TODO: auth/users/workspaces/projects/tasks/comments/tags/stats 라우터 연결
+
+/**
+ * 🔐 workspace 스코프 전역 적용
+ * - /api/workspaces/:workspaceId 로 시작하는 모든 요청은
+ *   requireAuth + requireWorkspaceMember 통과해야 한다.
+ * - /api/workspaces (목록/생성)은 workspaceId가 없으니 여기 적용 안 됨
+ */
+app.use("/api/workspaces/:workspaceId", requireAuth, requireWorkspaceMember());
+
+/**
+ * 라우터 마운트
+ * - workspacesRouter: /api/workspaces + /api/workspaces/:workspaceId/... 둘 다 포함
+ * - 그 외는 workspaceId 아래로만 노출
+ */
+app.use("/api/workspaces", workspacesRouter);
+app.use("/api/workspaces/:workspaceId/projects", projectsRouter);
+app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", tasksRouter);
+app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentsRouter);
+app.use("/api/workspaces/:workspaceId", tagsRouter);
 
 app.use(errorHandler);
 

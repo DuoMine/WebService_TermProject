@@ -8,7 +8,6 @@ export function defineWorkspaceMember(sequelize) {
       id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
       workspace_id: { type: DataTypes.BIGINT, allowNull: false },
       user_id: { type: DataTypes.BIGINT, allowNull: false },
-      member_role: { type: DataTypes.ENUM("OWNER", "MEMBER"), allowNull: false, defaultValue: "MEMBER" },
     },
     {
       tableName: "workspace_members",

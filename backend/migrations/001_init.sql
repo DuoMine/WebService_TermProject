@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS workspace_members (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   workspace_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
-  member_role ENUM('OWNER','MEMBER') NOT NULL DEFAULT 'MEMBER',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_workspace_user (workspace_id, user_id),
   INDEX idx_ws_members_user (user_id),
