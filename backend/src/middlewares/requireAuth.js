@@ -21,3 +21,10 @@ export function requireAuth(req, res, next) {
     return sendError(res, 401, code, msg);
   }
 }
+
+function requireAdmin(req, res, next) {
+  if (req.auth?.role !== "ADMIN") {
+    return sendError(res, 403, "FORBIDDEN", "admin only");
+  }
+  next();
+}

@@ -8,6 +8,7 @@ import { redis } from "./config/redis.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { requireAuth } from "./middlewares/requireAuth.js";
+import { requireWorkspaceMember } from "./middlewares/requireWorkspaceMember.js";
 import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
 import authSocialRouter from "./routes/authSocial.js";
