@@ -41,7 +41,17 @@ npm run start
 ### Docker 실행
 
 ```bash
-docker compose up -d
+# 애플리케이션/MySQL/Redis 기동
+docker compose up -d --build
+
+# 처음 실행 및 db를 seed로 초기화할 때만
+# (운영 중 실행 시 seed 데이터만 남기고 사라짐)
+docker compose exec app npm run migrate
+docker compose exec app npm run seed
+
+# 컨테이너 상태 확인
+docker compose ps
+docker compose logs -f app
 ```
 
 ---
@@ -244,7 +254,8 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 3. Validation 실패 시 필드별 오류를 `details` 객체로 포함한다.
 4. Swagger 문서의 각 엔드포인트에는 최소 다음 응답을 명시한다.
    - 200 / 201 / 204
-   - 400 / 401 / 403 / 404 / 422 / 500 / 503
+   - 400 / 401 / 403 / 404 / 409 / 422 / 429 
+   - 500 / 503
 5. Postman Collection에는 대표적인 성공/실패 케이스 검증 요청을 포함한다.
 ---
 

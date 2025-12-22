@@ -12,7 +12,7 @@ export function defineWorkspaceMember(sequelize) {
     {
       tableName: "workspace_members",
       indexes: [{ unique: true, fields: ["workspace_id", "user_id"] }, { fields: ["user_id"] }],
-      paranoid: false, // 멤버십은 soft delete 굳이 필요 없음(원하면 켜도 됨)
+      paranoid: false, // 멤버십은 soft delete 굳이 필요 없음
       timestamps: true,
       createdAt: "created_at",
       updatedAt: false,
