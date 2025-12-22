@@ -241,7 +241,7 @@ router
     });
 
     // ✅ 4) 과제 포맷(래핑 없이)
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const project = await loadProjectOr404(req, res);
@@ -488,7 +488,7 @@ router
     task.deleted_at = new Date();
     await task.save();
 
-    return sendOk(res);
+    return sendNoContent(res);
   });
 
 export default router;

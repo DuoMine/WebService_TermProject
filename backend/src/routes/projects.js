@@ -176,8 +176,7 @@ router
       offset,
     });
 
-    // ✅ 4) 과제 포맷(래핑 없이)
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const workspaceId = req.workspace.id;
@@ -383,7 +382,7 @@ router
     p.deleted_at = new Date();
     await p.save();
 
-    return sendOk(res);
+    return sendNoContent(res);
   });
 
 export default router;

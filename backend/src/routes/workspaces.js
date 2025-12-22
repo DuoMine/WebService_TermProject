@@ -190,7 +190,7 @@ router
     });
 
     // ✅ 5) 과제 포맷 그대로(래핑 없이)
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   });
 
 /**
@@ -317,7 +317,7 @@ router
   .delete(requireWorkspaceOwner(), async (req, res) => {
     req.workspace.deleted_at = new Date();
     await req.workspace.save();
-    return sendOk(res);
+    return sendNoContent(res);
   });
 
 /**
@@ -475,7 +475,7 @@ router
     });
 
     // ✅ 4) 과제 포맷(래핑 없이)
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(requireWorkspaceOwner(), async (req, res) => {
     const workspaceId = req.workspace.id;
@@ -546,7 +546,7 @@ router.delete("/:workspaceId/members/:userId", requireWorkspaceOwner(), async (r
     where: { workspace_id: workspaceId, user_id: userId },
   });
 
-  return sendOk(res);
+  return sendNoContent(res);
 });
 
 export default router;

@@ -166,7 +166,7 @@ router
     u.status = "DELETED";
     await u.save();
 
-    return sendOk(res, { message: "USER_DELETED" });
+    return sendNoContent(res);
   });
 
 /**
@@ -349,8 +349,7 @@ router
     });
 
     // 5) response: 과제 포맷 그대로(래핑 없이)
-    return res.status(200).json(
-      toPageResult({ rows: result.rows.map(userPublic), count: result.count }, page, size, sort)
+    return sendOk(res, toPageResult({ rows: result.rows.map(userPublic), count: result.count }, page, size, sort)
     );
   });
 
@@ -550,7 +549,7 @@ router
     u.status = "DELETED";
     await u.save();
 
-    return sendOk(res, { message: "USER_DELETED" });
+    return sendNoContent(res);
   });
 
 export default router;

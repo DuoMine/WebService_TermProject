@@ -212,7 +212,7 @@ router
       offset,
     });
 
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const workspaceId = req.workspace.id;
@@ -295,7 +295,7 @@ router.delete("/tags/:tagId", async (req, res) => {
   if (!tag) return sendError(res, "RESOURCE_NOT_FOUND", "tag not found");
 
   await tag.destroy();
-  return sendOk(res);
+  return sendNoContent(res);
 });
 
 /**
@@ -516,7 +516,7 @@ router
       distinct: true,
     });
 
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const ok = await loadProjectTaskOr404(req, res);
@@ -594,7 +594,7 @@ router.delete("/projects/:projectId/tasks/:taskId/tags/:tagId", async (req, res)
 
   const taskId = Number(req.params.taskId);
   await models.TaskTag.destroy({ where: { task_id: taskId, tag_id: tagId } });
-  return sendOk(res);
+  return sendNoContent(res);
 });
 
 export default router;

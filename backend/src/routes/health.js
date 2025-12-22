@@ -3,7 +3,7 @@ import { Router } from "express";
 import { env } from "../config/env.js";
 import { sequelize } from "../models/index.js";
 import { redis } from "../config/redis.js";
-import { sendError } from "../utils/http.js";
+import { sendError, sendOk } from "../utils/http.js";
 
 const router = Router();
 /**
@@ -63,7 +63,7 @@ router.get("/", async (req, res) => {
     );
   }
 
-  return res.status(200).json(out);
+  return sendOk(res, out);
 });
 
 export default router;

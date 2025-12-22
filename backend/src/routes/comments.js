@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError, sendCreated } from "../utils/http.js";
+import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -233,9 +233,8 @@ router
       limit,
       offset,
     });
-
-    // ✅ 4) 과제 포맷(래핑 없이)
-    return res.status(200).json(toPageResult(result, page, size, sort));
+    
+    return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const ok = await loadProjectTaskOr404(req, res);
@@ -397,7 +396,7 @@ router
     c.deleted_at = new Date();
     await c.save();
 
-    return sendOk(res);
+    return sendNoContent(res);
   });
 
 export default router;
