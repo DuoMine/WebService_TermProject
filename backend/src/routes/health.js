@@ -6,7 +6,26 @@ import { redis } from "../config/redis.js";
 import { sendError } from "../utils/http.js";
 
 const router = Router();
-
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check (db/redis 포함)
+ *     responses:
+ *       200:
+ *         description: ok + dependency status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: "ok" }
+ *                 version: { type: string, example: "1.0.0" }
+ *                 buildTime: { type: string, example: "2025-12-22T00:00:00Z" }
+ *                 db: { type: string, example: "ok" }
+ *                 redis: { type: string, example: "ok" }
+ */
 router.get("/", async (req, res) => {
   const out = {
     status: "ok",

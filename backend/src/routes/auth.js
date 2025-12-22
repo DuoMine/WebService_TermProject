@@ -46,6 +46,43 @@ function userPublic(u) {
  * POST /api/auth/signup
  * body: { email, password, name }
  */
+/**
+ * @swagger
+ * /auth/signup:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Local signup
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password, name]
+ *             properties:
+ *               email: { type: string, example: "user@test.com" }
+ *               password: { type: string, example: "pw1234!" }
+ *               name: { type: string, example: "user1" }
+ *     responses:
+ *       200:
+ *         description: Created + set cookies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: "#/components/schemas/OkResponse"
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         user: { $ref: "#/components/schemas/User" }
+ *       400:
+ *         description: validation error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ */
 router.post("/signup", async (req, res) => {
   const { email, password, name } = req.body ?? {};
   const details = {};
@@ -82,6 +119,42 @@ router.post("/signup", async (req, res) => {
  * POST /api/auth/login
  * body: { email, password }
  * - access/refresh 쿠키 세팅
+ */
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Local login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, example: "user@test.com" }
+ *               password: { type: string, example: "pw1234!" }
+ *     responses:
+ *       200:
+ *         description: ok + set cookies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: "#/components/schemas/OkResponse"
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         user: { $ref: "#/components/schemas/User" }
+ *       401:
+ *         description: invalid credentials
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
@@ -128,6 +201,24 @@ router.post("/login", async (req, res) => {
  * POST /api/auth/refresh
  * - refresh 쿠키 검증 + DB 토큰 해시 확인
  * - refresh token rotation: 기존 토큰 revoked 후 새 refresh 발급/저장
+ */
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token (refresh rotation)
+ *     responses:
+ *       200:
+ *         description: ok + re-issue cookies
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/OkResponse" }
+ *       401:
+ *         description: refresh invalid/expired
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -204,6 +295,19 @@ router.post("/refresh", async (req, res) => {
 /**
  * POST /api/auth/logout
  * - refresh token revoke + 쿠키 제거
+ */
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout (revoke refresh + clear cookies)
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/OkResponse" }
  */
 router.post("/logout", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];

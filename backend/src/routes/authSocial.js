@@ -116,8 +116,35 @@ async function loginOrSignupWithProvider({ provider, providerUid, email, nicknam
 }
 
 /**
- * ✅ POST /api/v1/auth/social/firebase (provider 버전)
+ * ✅ POST /api/v1/auth/social/firebase
  * body: { idToken }
+ */
+/**
+ * @swagger
+ * /auth/social/firebase:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Firebase(Google) social login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [idToken]
+ *             properties:
+ *               idToken: { type: string, example: "eyJhbGciOi..." }
+ *     responses:
+ *       200:
+ *         description: ok + set cookies
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/OkResponse" }
+ *       401:
+ *         description: invalid token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/social/firebase", async (req, res) => {
   const { idToken } = req.body ?? {};
@@ -160,6 +187,16 @@ router.post("/social/firebase", async (req, res) => {
 /**
  * ✅ GET /api/auth/social/kakao/start
  */
+/**
+ * @swagger
+ * /auth/social/kakao/start:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Start Kakao OAuth (redirect)
+ *     responses:
+ *       302:
+ *         description: Redirect to Kakao authorize URL
+ */
 router.get("/social/kakao/start", (req, res) => {
   const KAKAO_REST_KEY = process.env.KAKAO_REST_KEY;
   const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI;
@@ -190,6 +227,26 @@ router.get("/social/kakao/start", (req, res) => {
 
 /**
  * ✅ GET /api/v1/auth/social/kakao/callback (provider 버전)
+ */
+/**
+ * @swagger
+ * /auth/social/kakao/callback:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Kakao OAuth callback (code 처리 후 redirect)
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       302:
+ *         description: Redirect to frontend after login
+ *       400:
+ *         description: missing/invalid code
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get("/social/kakao/callback", async (req, res) => {
   const { code, state } = req.query ?? {};

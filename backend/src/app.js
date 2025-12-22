@@ -18,7 +18,10 @@ import projectsRouter from "./routes/projects.js";
 import tasksRouter from "./routes/tasks.js";
 import commentsRouter from "./routes/comments.js";
 import tagsRouter from "./routes/tags.js";
-const app = express();
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./docs/swagger.js";
+
+export const app = express();
 
 app.use(
   cors({
@@ -75,6 +78,8 @@ app.use("/api/workspaces/:workspaceId/projects", projectsRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", tasksRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentsRouter);
 app.use("/api/workspaces/:workspaceId", tagsRouter);
+
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorHandler);
 
