@@ -1,7 +1,9 @@
 // src/routes/projects.js
 import express from "express";
+import { Op } from "sequelize";
 import { models } from "../models/index.js";
 import { sendOk, sendError } from "../utils/http.js";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -27,13 +29,41 @@ const router = express.Router({ mergeParams: true });
  *   get:
  *     tags: [Projects]
  *     summary: List projects in workspace
- *     description: deleted_at=null인 프로젝트만 반환한다.
+ *     description: 'deleted_at=null인 프로젝트만 반환한다. Pagination(1-base) + sort + filters(keyword,status,dateFrom/dateTo)'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: workspaceId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, name, status'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by project name/description (LIKE)'
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [ACTIVE, ARCHIVED] }
+ *         description: 'Filter by project status'
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: 'created_at >= dateFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'created_at <= dateTo (YYYY-MM-DD)'
  *     responses:
  *       200:
  *         description: ok
@@ -42,15 +72,15 @@ const router = express.Router({ mergeParams: true });
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     projects:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/Project"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items: { $ref: "#/components/schemas/Project" }
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       401:
  *         description: UNAUTHORIZED / not member (middleware)
  *         content:
@@ -107,12 +137,47 @@ router
   .get(async (req, res) => {
     const workspaceId = req.workspace.id;
 
-    const projects = await models.Project.findAll({
-      where: { workspace_id: workspaceId, deleted_at: null },
-      order: [["created_at", "DESC"]],
+    // ✅ 1) pagination (1-base)
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist (snake_case)
+    const { sort, order } = parseSort(
+      req.query,
+      ["id", "created_at", "name", "status"],
+      "created_at,DESC"
+    );
+
+    // ✅ 3) filters: keyword/status/dateFrom/dateTo
+    const f = parseFilters(req.query);
+    const where = { workspace_id: workspaceId, deleted_at: null };
+
+    if (f.keyword) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${f.keyword}%` } },
+        { description: { [Op.like]: `%${f.keyword}%` } },
+      ];
+    }
+
+    if (f.status) {
+      // 안전하게 enum만 허용
+      if (["ACTIVE", "ARCHIVED"].includes(f.status)) where.status = f.status;
+    }
+
+    if (f.dateFrom || f.dateTo) {
+      where.created_at = {};
+      if (f.dateFrom) where.created_at[Op.gte] = new Date(`${f.dateFrom}T00:00:00.000Z`);
+      if (f.dateTo) where.created_at[Op.lte] = new Date(`${f.dateTo}T23:59:59.999Z`);
+    }
+
+    const result = await models.Project.findAndCountAll({
+      where,
+      order,
+      limit,
+      offset,
     });
 
-    return sendOk(res, { projects });
+    // ✅ 4) 과제 포맷(래핑 없이)
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const workspaceId = req.workspace.id;

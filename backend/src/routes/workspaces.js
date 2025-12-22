@@ -1,9 +1,11 @@
 // src/routes/workspaces.js
 import express from "express";
+import { Op } from "sequelize";
 import { models, sequelize } from "../models/index.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { sendOk, sendError } from "../utils/http.js";
 import { requireWorkspaceOwner } from "../middlewares/requireWorkspaceMember.js";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router();
 
@@ -66,8 +68,33 @@ const router = express.Router();
  *   get:
  *     tags: [Workspaces]
  *     summary: List my workspaces
- *     description: 내가 속한(멤버인) 워크스페이스 목록을 반환한다. deleted_at=null만 조회.
+ *     description: 내가 속한(멤버인) 워크스페이스 목록(soft delete 제외). Pagination(1-base) + sort + filters(keyword, dateFrom/dateTo)
  *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: Page number (1-base)
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: Page size (max 50)
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format "field,ASC|DESC" (allowed: id, created_at, name)'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: Search by workspace name/description (LIKE)
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: created_at >= dateFrom (YYYY-MM-DD)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: created_at <= dateTo (YYYY-MM-DD)
  *     responses:
  *       200:
  *         description: ok
@@ -76,15 +103,15 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     workspaces:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/Workspace"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items: { $ref: "#/components/schemas/Workspace" }
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       401:
  *         description: UNAUTHORIZED
  *         content:
@@ -121,8 +148,33 @@ router
   .get(requireAuth, async (req, res) => {
     const userId = req.auth.userId;
 
-    const list = await models.Workspace.findAll({
-      where: { deleted_at: null },
+    // ✅ 1) pagination (1-base)
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist (snake_case 기준)
+    const { sort, order } = parseSort(req.query, ["id", "created_at", "name"], "created_at,DESC");
+
+    // ✅ 3) filters: keyword, dateFrom/dateTo
+    const f = parseFilters(req.query);
+
+    const where = { deleted_at: null };
+
+    if (f.keyword) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${f.keyword}%` } },
+        { description: { [Op.like]: `%${f.keyword}%` } },
+      ];
+    }
+
+    if (f.dateFrom || f.dateTo) {
+      where.created_at = {};
+      if (f.dateFrom) where.created_at[Op.gte] = new Date(`${f.dateFrom}T00:00:00.000Z`);
+      if (f.dateTo) where.created_at[Op.lte] = new Date(`${f.dateTo}T23:59:59.999Z`);
+    }
+
+    // ✅ 4) 목록: 내가 속한 workspace만
+    const result = await models.Workspace.findAndCountAll({
+      where,
       include: [
         {
           model: models.WorkspaceMember,
@@ -131,10 +183,14 @@ router
           attributes: [],
         },
       ],
-      order: [["created_at", "DESC"]],
+      order,
+      limit,
+      offset,
+      distinct: true, // include로 count 중복 방지
     });
 
-    return sendOk(res, { workspaces: list });
+    // ✅ 5) 과제 포맷 그대로(래핑 없이)
+    return res.status(200).json(toPageResult(result, page, size, sort));
   });
 
 /**
@@ -270,12 +326,33 @@ router
  *   get:
  *     tags: [Workspaces]
  *     summary: List workspace members
+ *     description: Pagination(1-base) + sort + filters(keyword, role)
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: workspaceId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: Page number (1-base)
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: Page size (max 50)
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,ASC" }
+ *         description: 'Sort format "field,ASC|DESC" (allowed: created_at, user_id)'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: Search by user name/email (LIKE)
+ *       - in: query
+ *         name: role
+ *         schema: { type: string, enum: [USER, ADMIN] }
+ *         description: Filter by user.role
  *     responses:
  *       200:
  *         description: ok
@@ -284,26 +361,28 @@ router
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     members:
- *                       type: array
- *                       items:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       workspace_id: { type: integer, example: 1 }
+ *                       user_id: { type: integer, example: 2 }
+ *                       created_at: { type: string, example: "2025-12-22T10:00:00.000Z" }
+ *                       user:
  *                         type: object
  *                         properties:
- *                           workspace_id: { type: integer, example: 1 }
- *                           user_id: { type: integer, example: 2 }
- *                           created_at: { type: string, example: "2025-12-22T10:00:00.000Z" }
- *                           user:
- *                             type: object
- *                             properties:
- *                               id: { type: integer, example: 2 }
- *                               email: { type: string, example: "u2@test.com" }
- *                               name: { type: string, example: "user2" }
- *                               role: { type: string, example: "USER" }
- *                               status: { type: string, example: "ACTIVE" }
+ *                           id: { type: integer, example: 2 }
+ *                           email: { type: string, example: "u2@test.com" }
+ *                           name: { type: string, example: "user2" }
+ *                           role: { type: string, example: "USER" }
+ *                           status: { type: string, example: "ACTIVE" }
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,ASC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       401:
  *         description: UNAUTHORIZED / not member (middleware)
  *         content:
@@ -358,19 +437,45 @@ router
   .get(async (req, res) => {
     const workspaceId = req.workspace.id;
 
-    const members = await models.WorkspaceMember.findAll({
-      where: { workspace_id: workspaceId },
+    // ✅ 1) pagination
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist (멤버 목록에서 유효한 필드만)
+    const { sort, order } = parseSort(req.query, ["created_at", "user_id"], "created_at,ASC");
+
+    // ✅ 3) filters: keyword, role
+    const f = parseFilters(req.query);
+
+    const where = { workspace_id: workspaceId };
+    const userWhere = {};
+
+    if (f.role) userWhere.role = f.role;
+
+    if (f.keyword) {
+      userWhere[Op.or] = [
+        { name: { [Op.like]: `%${f.keyword}%` } },
+        { email: { [Op.like]: `%${f.keyword}%` } },
+      ];
+    }
+
+    const result = await models.WorkspaceMember.findAndCountAll({
+      where,
       include: [
         {
           model: models.User,
           as: "user",
           attributes: ["id", "email", "name", "role", "status"],
+          ...(Object.keys(userWhere).length ? { where: userWhere } : {}),
         },
       ],
-      order: [["created_at", "ASC"]],
+      order,
+      limit,
+      offset,
+      distinct: true,
     });
 
-    return sendOk(res, { members });
+    // ✅ 4) 과제 포맷(래핑 없이)
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(requireWorkspaceOwner(), async (req, res) => {
     const workspaceId = req.workspace.id;

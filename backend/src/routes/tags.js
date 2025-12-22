@@ -1,7 +1,9 @@
 // src/routes/tags.js
 import express from "express";
+import { Op } from "sequelize";
 import { models } from "../models/index.js";
 import { sendOk, sendError } from "../utils/http.js";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -71,12 +73,37 @@ async function loadProjectTaskOr404(req, res) {
  *   get:
  *     tags: [Tags]
  *     summary: List workspace tags
+ *     description: 'Pagination(1-base) + sort + filters(keyword,dateFrom/dateTo)'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: workspaceId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "name,ASC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, name, created_at'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by tag name (LIKE)'
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: 'created_at >= dateFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'created_at <= dateTo (YYYY-MM-DD)'
  *     responses:
  *       200:
  *         description: ok
@@ -85,15 +112,16 @@ async function loadProjectTaskOr404(req, res) {
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     tags:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/Tag"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Tag"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "name,ASC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       401:
  *         description: UNAUTHORIZED / not member (middleware)
  *         content:
@@ -159,12 +187,32 @@ router
   .get(async (req, res) => {
     const workspaceId = req.workspace.id;
 
-    const tags = await models.Tag.findAll({
-      where: { workspace_id: workspaceId },
-      order: [["name", "ASC"]],
+    // ✅ 1) pagination
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist
+    const { sort, order } = parseSort(req.query, ["id", "name", "created_at"], "name,ASC");
+
+    // ✅ 3) filters: keyword/dateFrom/dateTo
+    const f = parseFilters(req.query);
+    const where = { workspace_id: workspaceId };
+
+    if (f.keyword) where.name = { [Op.like]: `%${f.keyword}%` };
+
+    if (f.dateFrom || f.dateTo) {
+      where.created_at = {};
+      if (f.dateFrom) where.created_at[Op.gte] = new Date(`${f.dateFrom}T00:00:00.000Z`);
+      if (f.dateTo) where.created_at[Op.lte] = new Date(`${f.dateTo}T23:59:59.999Z`);
+    }
+
+    const result = await models.Tag.findAndCountAll({
+      where,
+      order,
+      limit,
+      offset,
     });
 
-    return sendOk(res, { tags });
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const workspaceId = req.workspace.id;
@@ -266,7 +314,7 @@ router.delete("/tags/:tagId", async (req, res) => {
  *   get:
  *     tags: [Tags]
  *     summary: List tags attached to task
- *     description: TaskTag 목록(필요시 include로 Tag 포함). created_at ASC.
+ *     description: 'Pagination(1-base) + sort + filters(keyword,tagId,dateFrom/dateTo). 기본은 TaskTag.created_at ASC. include로 Tag 포함.'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -281,6 +329,34 @@ router.delete("/tags/:tagId", async (req, res) => {
  *         name: taskId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,ASC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: created_at, tag_id'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by tag name (LIKE)'
+ *       - in: query
+ *         name: tagId
+ *         schema: { type: integer }
+ *         description: 'Filter by tag_id'
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: 'TaskTag.created_at >= dateFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'TaskTag.created_at <= dateTo (YYYY-MM-DD)'
  *     responses:
  *       200:
  *         description: ok
@@ -289,21 +365,22 @@ router.delete("/tags/:tagId", async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     taskTags:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           task_id: { type: integer, example: 10 }
- *                           tag_id: { type: integer, example: 3 }
- *                           created_at: { type: string, example: "2025-12-23T12:00:00.000Z" }
- *                           tag:
- *                             $ref: "#/components/schemas/Tag"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       task_id: { type: integer, example: 10 }
+ *                       tag_id: { type: integer, example: 3 }
+ *                       created_at: { type: string, example: "2025-12-23T12:00:00.000Z" }
+ *                       tag:
+ *                         $ref: "#/components/schemas/Tag"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,ASC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       400:
  *         description: BAD_REQUEST (invalid projectId / invalid taskId)
  *         content:
@@ -395,13 +472,47 @@ router
 
     const taskId = Number(req.params.taskId);
 
-    const rows = await models.TaskTag.findAll({
-      where: { task_id: taskId },
-      include: [{ model: models.Tag, as: "tag" }],
-      order: [["created_at", "ASC"]],
+    // ✅ 1) pagination
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist (TaskTag 기준)
+    const { sort, order } = parseSort(req.query, ["created_at", "tag_id"], "created_at,ASC");
+
+    // ✅ 3) filters: keyword/tagId/dateFrom/dateTo
+    const f = parseFilters(req.query);
+    const where = { task_id: taskId };
+
+    if (f.tagId) {
+      const tid = Number(f.tagId);
+      if (Number.isFinite(tid) && tid > 0) where.tag_id = tid;
+    }
+
+    if (f.dateFrom || f.dateTo) {
+      where.created_at = {};
+      if (f.dateFrom) where.created_at[Op.gte] = new Date(`${f.dateFrom}T00:00:00.000Z`);
+      if (f.dateTo) where.created_at[Op.lte] = new Date(`${f.dateTo}T23:59:59.999Z`);
+    }
+
+    // keyword는 Tag.name에 걸어야 해서 include where 사용
+    const tagWhere = {};
+    if (f.keyword) tagWhere.name = { [Op.like]: `%${f.keyword}%` };
+
+    const result = await models.TaskTag.findAndCountAll({
+      where,
+      include: [
+        {
+          model: models.Tag,
+          as: "tag",
+          ...(Object.keys(tagWhere).length ? { where: tagWhere } : {}),
+        },
+      ],
+      order,
+      limit,
+      offset,
+      distinct: true,
     });
 
-    return sendOk(res, { taskTags: rows });
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const ok = await loadProjectTaskOr404(req, res);

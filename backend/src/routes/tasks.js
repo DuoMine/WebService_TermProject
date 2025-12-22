@@ -1,7 +1,9 @@
 // src/routes/tasks.js
 import express from "express";
+import { Op } from "sequelize";
 import { models } from "../models/index.js";
 import { sendOk, sendError } from "../utils/http.js";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -51,7 +53,7 @@ async function loadProjectOr404(req, res) {
  *   get:
  *     tags: [Tasks]
  *     summary: List tasks in project
- *     description: project 존재/권한은 상위 미들웨어(+loadProjectOr404)로 검증. deleted_at=null만 반환.
+ *     description: 'project 존재/권한은 상위 미들웨어(+loadProjectOr404)로 검증. deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,status,assigneeId,dueFrom/dueTo)'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -62,6 +64,38 @@ async function loadProjectOr404(req, res) {
  *         name: projectId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, due_at, status, priority'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by title/description (LIKE)'
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [TODO, DOING, DONE] }
+ *         description: 'Filter by task status'
+ *       - in: query
+ *         name: assigneeId
+ *         schema: { type: integer }
+ *         description: 'Filter by assignee_id'
+ *       - in: query
+ *         name: dueFrom
+ *         schema: { type: string, format: date }
+ *         description: 'due_at >= dueFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dueTo
+ *         schema: { type: string, format: date }
+ *         description: 'due_at <= dueTo (YYYY-MM-DD)'
  *     responses:
  *       200:
  *         description: ok
@@ -70,15 +104,16 @@ async function loadProjectOr404(req, res) {
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     tasks:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/Task"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Task"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       400:
  *         description: BAD_REQUEST (invalid projectId)
  *         content:
@@ -162,12 +197,51 @@ router
 
     const projectId = Number(req.params.projectId);
 
-    const tasks = await models.Task.findAll({
-      where: { project_id: projectId, deleted_at: null },
-      order: [["created_at", "DESC"]],
+    // ✅ 1) pagination (1-base)
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist
+    const { sort, order } = parseSort(
+      req.query,
+      ["id", "created_at", "due_at", "status", "priority"],
+      "created_at,DESC"
+    );
+
+    // ✅ 3) filters
+    const f = parseFilters(req.query);
+    const where = { project_id: projectId, deleted_at: null };
+
+    if (f.keyword) {
+      where[Op.or] = [
+        { title: { [Op.like]: `%${f.keyword}%` } },
+        { description: { [Op.like]: `%${f.keyword}%` } },
+      ];
+    }
+
+    if (f.status && VALID_STATUS.includes(f.status)) {
+      where.status = f.status;
+    }
+
+    if (f.assigneeId) {
+      const aid = Number(f.assigneeId);
+      if (Number.isFinite(aid) && aid > 0) where.assignee_id = aid;
+    }
+
+    if (f.dueFrom || f.dueTo) {
+      where.due_at = {};
+      if (f.dueFrom) where.due_at[Op.gte] = new Date(`${f.dueFrom}T00:00:00.000Z`);
+      if (f.dueTo) where.due_at[Op.lte] = new Date(`${f.dueTo}T23:59:59.999Z`);
+    }
+
+    const result = await models.Task.findAndCountAll({
+      where,
+      order,
+      limit,
+      offset,
     });
 
-    return sendOk(res, { tasks });
+    // ✅ 4) 과제 포맷(래핑 없이)
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const project = await loadProjectOr404(req, res);

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { requireAuth, requireAdmin } from "../middlewares/requireAuth.js";
 import { sendOk, sendError } from "../utils/http.js";
 import { models } from "../models/index.js";
+import { Op } from "sequelize";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = Router();
 
@@ -225,7 +227,33 @@ router
  *   get:
  *     tags: [Users]
  *     summary: List users (ADMIN only)
+ *     description: 'Pagination(1-base) + sort + filters(keyword/role/status). 기본은 DELETED 제외.'
  *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, updated_at, email, name, role, status'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by name or email (LIKE)'
+ *       - in: query
+ *         name: role
+ *         schema: { type: string, enum: [USER, ADMIN] }
+ *         description: 'Filter by role'
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [ACTIVE, SUSPENDED] }
+ *         description: 'Filter by status (DELETED is excluded by default)'
  *     responses:
  *       200:
  *         description: ok
@@ -234,15 +262,16 @@ router
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     users:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/User"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       401:
  *         description: UNAUTHORIZED
  *         content:
@@ -281,13 +310,53 @@ router
     return sendOk(res, { user: userPublic(u) }, 201);
   })
   .get(requireAuth, requireAdmin, async (req, res) => {
-    const users = await User.findAll({
-      order: [["id", "DESC"]],
+    // 1) pagination (1-base)
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // 2) sort whitelist (DB 컬럼명 기준)
+    const { sort, order } = parseSort(
+      req.query,
+      ["id", "created_at", "updated_at", "email", "name", "role", "status"],
+      "created_at,DESC"
+    );
+
+    // 3) filters
+    const f = parseFilters(req.query);
+
+    // ✅ 기본: DELETED 제외
+    const where = { status: { [Op.ne]: "DELETED" } };
+
+    if (f.role) where.role = f.role;
+
+    // status는 ACTIVE/SUSPENDED만 허용(그 외 값은 무시)
+    if (f.status && ["ACTIVE", "SUSPENDED"].includes(f.status)) {
+      where.status = f.status;
+    }
+
+    if (f.keyword) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${f.keyword}%` } },
+        { email: { [Op.like]: `%${f.keyword}%` } },
+      ];
+    }
+
+    // 4) query
+    const result = await User.findAndCountAll({
+      where,
+      order,
+      limit,
+      offset,
     });
 
-    return sendOk(res, {
-      users: users.map(userPublic),
-    });
+    // 5) response: 과제 포맷 그대로(래핑 없이)
+    return res.status(200).json(
+      toPageResult(
+        { rows: result.rows.map(userPublic), count: result.count },
+        page,
+        size,
+        sort
+      )
+    );
   });
 
 /**
@@ -359,7 +428,7 @@ router
  *                 example: "USER"
  *               status:
  *                 type: string
- *                 enum: [ACTIVE, INACTIVE, DELETED]
+ *                 enum: [ACTIVE, SUSPENDED, DELETED]
  *                 example: "ACTIVE"
  *     responses:
  *       200:
@@ -468,7 +537,7 @@ router
     }
 
     if (status !== undefined) {
-      if (!["ACTIVE", "INACTIVE", "DELETED"].includes(status)) {
+      if (!["ACTIVE", "SUSPENDED", "DELETED"].includes(status)) {
         return sendError(res, 400, "INVALID_STATUS", "invalid status");
       }
       u.status = status;

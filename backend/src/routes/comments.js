@@ -1,7 +1,9 @@
 // src/routes/comments.js
 import express from "express";
+import { Op } from "sequelize";
 import { models } from "../models/index.js";
 import { sendOk, sendError } from "../utils/http.js";
+import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
 
@@ -60,7 +62,7 @@ async function loadProjectTaskOr404(req, res) {
  *   get:
  *     tags: [Comments]
  *     summary: List comments in task
- *     description: created_at ASC 정렬. deleted_at=null만 반환.
+ *     description: 'created_at ASC 기본 정렬. deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,authorId,dateFrom/dateTo)'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -75,6 +77,34 @@ async function loadProjectTaskOr404(req, res) {
  *         name: taskId
  *         required: true
  *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,ASC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, user_id'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by comment content (LIKE)'
+ *       - in: query
+ *         name: authorId
+ *         schema: { type: integer }
+ *         description: 'Filter by user_id (author)'
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: 'created_at >= dateFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'created_at <= dateTo (YYYY-MM-DD)'
  *     responses:
  *       200:
  *         description: ok
@@ -83,15 +113,16 @@ async function loadProjectTaskOr404(req, res) {
  *             schema:
  *               type: object
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     comments:
- *                       type: array
- *                       items:
- *                         $ref: "#/components/schemas/Comment"
- *               required: [ok, data]
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Comment"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,ASC" }
+ *               required: [content, page, size, totalElements, totalPages]
  *       400:
  *         description: BAD_REQUEST (invalid projectId / invalid taskId)
  *         content:
@@ -173,12 +204,44 @@ router
 
     const taskId = Number(req.params.taskId);
 
-    const comments = await models.Comment.findAll({
-      where: { task_id: taskId, deleted_at: null },
-      order: [["created_at", "ASC"]],
+    // ✅ 1) pagination (1-base)
+    const { page, size, offset, limit } = parsePagination(req.query);
+
+    // ✅ 2) sort whitelist
+    const { sort, order } = parseSort(
+      req.query,
+      ["id", "created_at", "user_id"],
+      "created_at,ASC"
+    );
+
+    // ✅ 3) filters: keyword/authorId/dateFrom/dateTo
+    const f = parseFilters(req.query);
+    const where = { task_id: taskId, deleted_at: null };
+
+    if (f.keyword) {
+      where.content = { [Op.like]: `%${f.keyword}%` };
+    }
+
+    if (f.authorId) {
+      const aid = Number(f.authorId);
+      if (Number.isFinite(aid) && aid > 0) where.user_id = aid;
+    }
+
+    if (f.dateFrom || f.dateTo) {
+      where.created_at = {};
+      if (f.dateFrom) where.created_at[Op.gte] = new Date(`${f.dateFrom}T00:00:00.000Z`);
+      if (f.dateTo) where.created_at[Op.lte] = new Date(`${f.dateTo}T23:59:59.999Z`);
+    }
+
+    const result = await models.Comment.findAndCountAll({
+      where,
+      order,
+      limit,
+      offset,
     });
 
-    return sendOk(res, { comments });
+    // ✅ 4) 과제 포맷(래핑 없이)
+    return res.status(200).json(toPageResult(result, page, size, sort));
   })
   .post(async (req, res) => {
     const ok = await loadProjectTaskOr404(req, res);
