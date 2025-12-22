@@ -30,11 +30,6 @@
 # .env 파일 설정
 cp .env.example .env
 ```
-.env 파일에서 아래 항목들을 반드시 먼저 설정한다.
-- DB 접속 정보
-- Redis 접속 정보
-- JWT / Cookie 시크릿
-- seed용 비밀번호 (SEED_USER_PASSWORD, SEED_ADMIN_PASSWORD)
 
 ### 로컬 실행 (Node.js)
 
