@@ -37,9 +37,64 @@ function userPublic(u) {
     createdAt: u.created_at,
   };
 }
-
 /**
- * POST /api/auth/signup
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: Authentication (cookie-based access/refresh)
+ */
+/**
+ * @swagger
+ * /api/auth/signup:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Sign up
+ *     description: Create local account (email/password). Returns user info.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password, name]
+ *             properties:
+ *               email: { type: string, example: "user1@test.com" }
+ *               password: { type: string, example: "password1234" }
+ *               name: { type: string, example: "user1" }
+ *     responses:
+ *       201:
+ *         description: created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "signup ok" }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     email: { type: string, example: "user1@test.com" }
+ *                     name: { type: string, example: "user1" }
+ *                     role: { type: string, example: "USER" }
+ *                     status: { type: string, example: "ACTIVE" }
+ *                     createdAt: { type: string, example: "2025-12-22T10:00:00.000Z" }
+ *               required: [message, user]
+ *       400:
+ *         description: VALIDATION_FAILED (details 포함)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       409:
+ *         description: DUPLICATE_RESOURCE (email already exists)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (failed to signup)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/signup", async (req, res) => {
   const { email, password, name } = req.body ?? {};
@@ -75,7 +130,65 @@ router.post("/signup", async (req, res) => {
 });
 
 /**
- * POST /api/auth/login
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login
+ *     description: Issue access/refresh cookies (refresh token stored hashed in DB).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, example: "user1@test.com" }
+ *               password: { type: string, example: "password1234" }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         headers:
+ *           Set-Cookie:
+ *             description: access/refresh cookies
+ *             schema: { type: string }
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "login ok" }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     email: { type: string, example: "user1@test.com" }
+ *                     name: { type: string, example: "user1" }
+ *                     role: { type: string, example: "USER" }
+ *                     status: { type: string, example: "ACTIVE" }
+ *                     createdAt: { type: string, example: "2025-12-22T10:00:00.000Z" }
+ *               required: [message, user]
+ *       400:
+ *         description: VALIDATION_FAILED (details 포함)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED (invalid credentials / password login not available)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN (user not active)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (failed to login)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
@@ -119,8 +232,53 @@ router.post("/login", async (req, res) => {
 });
 
 /**
- * POST /api/auth/refresh
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token (rotation)
+ *     description: Rotate refresh token (revoke old, issue new). Requires refresh cookie.
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: ok
+ *         headers:
+ *           Set-Cookie:
+ *             description: new access/refresh cookies
+ *             schema: { type: string }
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "refreshed" }
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     email: { type: string, example: "user1@test.com" }
+ *                     name: { type: string, example: "user1" }
+ *                     role: { type: string, example: "USER" }
+ *                     status: { type: string, example: "ACTIVE" }
+ *                     createdAt: { type: string, example: "2025-12-22T10:00:00.000Z" }
+ *               required: [message, user]
+ *       401:
+ *         description: UNAUTHORIZED / TOKEN_EXPIRED (missing refresh token, invalid/expired refresh token)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN (user not active)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (failed to refresh token)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
+
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
   if (!token) return sendError(res, "UNAUTHORIZED", "missing refresh token");
@@ -194,7 +352,28 @@ router.post("/refresh", async (req, res) => {
 });
 
 /**
- * POST /api/auth/logout
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout
+ *     description: Revoke current refresh token (if exists) and clear cookies.
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "logout ok" }
+ *               required: [message]
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (failed to logout)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/logout", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
