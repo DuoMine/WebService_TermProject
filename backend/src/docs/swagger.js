@@ -1,4 +1,10 @@
+// src/docs/swagger.js
 import swaggerJSDoc from "swagger-jsdoc";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const swaggerSpec = swaggerJSDoc({
   definition: {
@@ -22,7 +28,6 @@ export const swaggerSpec = swaggerJSDoc({
     ],
     components: {
       securitySchemes: {
-        // 네 프로젝트가 쿠키 기반 access/refresh 라면 이게 제일 덜 거슬림
         cookieAuth: { type: "apiKey", in: "cookie", name: "access_token" },
       },
       schemas: {
@@ -50,6 +55,7 @@ export const swaggerSpec = swaggerJSDoc({
           required: ["ok", "data"],
         },
 
+        // ✅ 아래 스키마들은 실제 컬럼명과 맞춰라 (2번 참고)
         User: {
           type: "object",
           properties: {
@@ -69,11 +75,13 @@ export const swaggerSpec = swaggerJSDoc({
           properties: {
             id: { type: "integer", example: 1 },
             name: { type: "string", example: "team-a" },
-            owner_user_id: { type: "integer", example: 1 },
+            owner_id: { type: "integer", example: 1 },
+            description: { type: "string", nullable: true, example: null },
+            deleted_at: { type: "string", nullable: true, example: null },
             created_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
             updated_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
           },
-          required: ["id", "name", "owner_user_id"],
+          required: ["id", "name", "owner_id"],
         },
 
         Project: {
@@ -82,11 +90,14 @@ export const swaggerSpec = swaggerJSDoc({
             id: { type: "integer", example: 10 },
             workspace_id: { type: "integer", example: 1 },
             name: { type: "string", example: "backend" },
-            description: { type: "string", example: "api server" },
+            description: { type: "string", nullable: true, example: "api server" },
+            status: { type: "string", example: "ACTIVE" },
+            created_by: { type: "integer", example: 1 },
+            deleted_at: { type: "string", nullable: true, example: null },
             created_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
             updated_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
           },
-          required: ["id", "workspace_id", "name"],
+          required: ["id", "workspace_id", "name", "status", "created_by"],
         },
 
         Task: {
@@ -95,13 +106,17 @@ export const swaggerSpec = swaggerJSDoc({
             id: { type: "integer", example: 100 },
             project_id: { type: "integer", example: 10 },
             title: { type: "string", example: "implement refresh rotation" },
-            description: { type: "string", example: "..." },
-            status: { type: "string", example: "TODO" },
-            due_date: { type: "string", nullable: true, example: null },
+            description: { type: "string", nullable: true, example: null },
+            status: { type: "string", enum: ["TODO", "DOING", "DONE"], example: "TODO" },
+            priority: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"], example: "MEDIUM" },
+            due_at: { type: "string", nullable: true, example: null },
+            created_by: { type: "integer", example: 1 },
+            assignee_id: { type: "integer", nullable: true, example: null },
+            deleted_at: { type: "string", nullable: true, example: null },
             created_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
             updated_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
           },
-          required: ["id", "project_id", "title", "status"],
+          required: ["id", "project_id", "title", "status", "priority", "created_by"],
         },
 
         Comment: {
@@ -111,6 +126,7 @@ export const swaggerSpec = swaggerJSDoc({
             task_id: { type: "integer", example: 100 },
             user_id: { type: "integer", example: 1 },
             content: { type: "string", example: "looks good" },
+            deleted_at: { type: "string", nullable: true, example: null },
             created_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
             updated_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
           },
@@ -127,10 +143,23 @@ export const swaggerSpec = swaggerJSDoc({
           },
           required: ["id", "workspace_id", "name"],
         },
+
+        TaskTag: {
+          type: "object",
+          properties: {
+            task_id: { type: "integer", example: 100 },
+            tag_id: { type: "integer", example: 7 },
+            created_at: { type: "string", example: "2025-12-22T10:00:00.000Z" },
+          },
+          required: ["task_id", "tag_id"],
+        },
       },
     },
   },
 
-  // ✅ 네 프로젝트 구조에서 routes 주석을 긁어오는 경로들
-  apis: ["./src/routes/**/*.js", "./src/app.js", "./src/routes/*.js"],
+  // ✅ cwd 영향 제거
+  apis: [
+    path.join(__dirname, "../routes/**/*.js"),
+    path.join(__dirname, "../app.js"),
+  ],
 });
