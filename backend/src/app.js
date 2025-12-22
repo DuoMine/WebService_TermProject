@@ -79,7 +79,7 @@ app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", tasksRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentsRouter);
 app.use("/api/workspaces/:workspaceId", tagsRouter);
 
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorHandler);
 
