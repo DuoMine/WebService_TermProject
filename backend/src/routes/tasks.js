@@ -53,7 +53,7 @@ async function loadProjectOr404(req, res) {
  *   get:
  *     tags: [Tasks]
  *     summary: List tasks in project
- *     description: 'project 존재/권한은 상위 미들웨어(+loadProjectOr404)로 검증. deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,status,assigneeId,dueFrom/dueTo)'
+ *     description: 'deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,status,assigneeId,dueFrom/dueTo). Allowed sort fields: id, created_at, due_at, status, priority'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -103,6 +103,7 @@ async function loadProjectOr404(req, res) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
  *               properties:
  *                 content:
  *                   type: array
@@ -113,19 +114,23 @@ async function loadProjectOr404(req, res) {
  *                 totalElements: { type: integer, example: 153 }
  *                 totalPages: { type: integer, example: 8 }
  *                 sort: { type: string, example: "created_at,DESC" }
- *               required: [content, page, size, totalElements, totalPages]
  *       400:
- *         description: BAD_REQUEST (invalid projectId)
+ *         description: BAD_REQUEST (invalid projectId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -165,26 +170,27 @@ async function loadProjectOr404(req, res) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [task]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     task:
- *                       $ref: "#/components/schemas/Task"
- *               required: [ok, data]
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
  *       400:
- *         description: BAD_REQUEST (invalid projectId / title required / invalid status / invalid priority)
+ *         description: BAD_REQUEST (invalid projectId / title required / invalid status / invalid priority). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -301,26 +307,27 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [task]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     task:
- *                       $ref: "#/components/schemas/Task"
- *               required: [ok, data]
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -363,26 +370,27 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [task]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     task:
- *                       $ref: "#/components/schemas/Task"
- *               required: [ok, data]
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid status / invalid priority)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid status / invalid priority). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -405,20 +413,25 @@ router
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
- *         description: ok
+ *       204:
+ *         description: No Content (soft deleted)
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }

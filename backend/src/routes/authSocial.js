@@ -123,6 +123,7 @@ async function loginOrSignupWithProvider({ provider, providerUid, email, nicknam
  *   post:
  *     tags: [Auth]
  *     summary: Firebase(Google) social login
+ *     description: Verify Firebase ID token, login/signup user, set access/refresh cookies.
  *     requestBody:
  *       required: true
  *       content:
@@ -131,25 +132,41 @@ async function loginOrSignupWithProvider({ provider, providerUid, email, nicknam
  *             type: object
  *             required: [idToken]
  *             properties:
- *               idToken: { type: string, example: "eyJhbGciOi..." }
+ *               idToken:
+ *                 type: string
+ *                 example: "eyJhbGciOi..."
  *     responses:
  *       200:
- *         description: ok + set cookies
+ *         description: Social login success (cookies set)
  *         content:
  *           application/json:
- *             schema: { $ref: "#/components/schemas/OkResponse" }
+ *             schema:
+ *               type: object
+ *               required: [message, user]
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "social login success"
+ *                 user:
+ *                   type: object
+ *                   required: [id, email, name, role]
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     email: { type: string, nullable: true, example: "user@test.com" }
+ *                     name: { type: string, example: "user" }
+ *                     role: { type: string, example: "USER" }
  *       400:
- *         description: idToken required
+ *         description: BAD_REQUEST (e.g., idToken required). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: invalid token
+ *         description: UNAUTHORIZED (invalid firebase token / firebase uid missing)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: server error
+ *         description: INTERNAL_SERVER_ERROR (firebase social login error)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -205,11 +222,12 @@ router.post("/social/firebase", async (req, res) => {
  *   get:
  *     tags: [Auth]
  *     summary: Start Kakao OAuth (redirect)
+ *     description: Set oauth state cookie and redirect to Kakao authorize URL.
  *     responses:
  *       302:
  *         description: Redirect to Kakao authorize URL
  *       500:
- *         description: server error
+ *         description: INTERNAL_SERVER_ERROR (kakao env missing)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -249,31 +267,31 @@ router.get("/social/kakao/start", (req, res) => {
  *   get:
  *     tags: [Auth]
  *     summary: Kakao OAuth callback (code 처리 후 redirect)
+ *     description: Exchange code for Kakao access token, fetch user info, login/signup, set cookies, then redirect to frontend.
  *     parameters:
  *       - in: query
  *         name: code
  *         required: true
  *         schema: { type: string }
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema: { type: string }
  *     responses:
  *       302:
- *         description: Redirect to frontend after login
+ *         description: Redirect to frontend after login (cookies set)
  *       400:
- *         description: missing/invalid code
+ *         description: BAD_REQUEST (invalid oauth state). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: kakao auth failed
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       503:
- *         description: kakao api unavailable
+ *         description: UNAUTHORIZED (kakao auth failed / missing kakao id/access token)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: server error
+ *         description: INTERNAL_SERVER_ERROR / UNKNOWN_ERROR (env missing or external fetch error or server error)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -315,11 +333,7 @@ router.get("/social/kakao/callback", async (req, res) => {
     }
     tokenJson = await tokenResp.json();
   } catch (e) {
-    return sendError(
-      res,
-      "SERVICE_UNAVAILABLE",
-      `kakao token fetch error: ${String(e?.message ?? e)}`
-    );
+    return sendError(res, "UNKNOWN_ERROR", `kakao token fetch error: ${String(e?.message ?? e)}`);
   }
 
   const kakaoAccessToken = tokenJson?.access_token;
@@ -338,7 +352,7 @@ router.get("/social/kakao/callback", async (req, res) => {
     }
     me = await meResp.json();
   } catch (e) {
-    return sendError(res, "SERVICE_UNAVAILABLE", `kakao me fetch error: ${String(e?.message ?? e)}`);
+    return sendError(res, "UNKNOWN_ERROR", `kakao me fetch error: ${String(e?.message ?? e)}`);
   }
 
   const providerUid = me?.id ? String(me.id) : null;

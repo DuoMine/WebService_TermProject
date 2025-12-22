@@ -6,12 +6,14 @@ import { redis } from "../config/redis.js";
 import { sendError, sendOk } from "../utils/http.js";
 
 const router = Router();
+
 /**
  * @swagger
  * /health:
  *   get:
  *     tags: [Health]
  *     summary: Health check (db/redis 포함)
+ *     description: Returns service metadata and dependency status. If any dependency check fails, an error response is returned.
  *     responses:
  *       200:
  *         description: ok + dependency status
@@ -19,12 +21,18 @@ const router = Router();
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [status, version, buildTime, db, redis]
  *               properties:
  *                 status: { type: string, example: "ok" }
  *                 version: { type: string, example: "1.0.0" }
  *                 buildTime: { type: string, example: "2025-12-22T00:00:00Z" }
  *                 db: { type: string, example: "ok" }
  *                 redis: { type: string, example: "ok" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (dependency failure)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get("/", async (req, res) => {
   const out = {

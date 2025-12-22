@@ -29,7 +29,7 @@ const router = express.Router({ mergeParams: true });
  *   get:
  *     tags: [Projects]
  *     summary: List projects in workspace
- *     description: 'deleted_at=null인 프로젝트만 반환한다. Pagination(1-base) + sort + filters(keyword,status,dateFrom/dateTo)'
+ *     description: 'deleted_at=null인 프로젝트만 반환한다. Pagination(1-base) + sort + filters(keyword,status,dateFrom/dateTo). Allowed sort fields: id, created_at, name, status'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -71,6 +71,7 @@ const router = express.Router({ mergeParams: true });
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
  *               properties:
  *                 content:
  *                   type: array
@@ -80,9 +81,13 @@ const router = express.Router({ mergeParams: true });
  *                 totalElements: { type: integer, example: 153 }
  *                 totalPages: { type: integer, example: 8 }
  *                 sort: { type: string, example: "created_at,DESC" }
- *               required: [content, page, size, totalElements, totalPages]
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -113,21 +118,22 @@ const router = express.Router({ mergeParams: true });
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [project]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     project:
- *                       $ref: "#/components/schemas/Project"
- *               required: [ok, data]
+ *                 project:
+ *                   $ref: "#/components/schemas/Project"
  *       400:
- *         description: BAD_REQUEST (name required)
+ *         description: BAD_REQUEST (name required). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -219,26 +225,27 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [project]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     project:
- *                       $ref: "#/components/schemas/Project"
- *               required: [ok, data]
+ *                 project:
+ *                   $ref: "#/components/schemas/Project"
  *       400:
- *         description: BAD_REQUEST (invalid projectId)
+ *         description: BAD_REQUEST (invalid projectId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -274,26 +281,27 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [project]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     project:
- *                       $ref: "#/components/schemas/Project"
- *               required: [ok, data]
+ *                 project:
+ *                   $ref: "#/components/schemas/Project"
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid status)
+ *         description: BAD_REQUEST (invalid projectId / invalid status). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -312,20 +320,25 @@ router
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
- *         description: ok
+ *       204:
+ *         description: No Content (soft deleted)
  *       400:
- *         description: BAD_REQUEST (invalid projectId)
+ *         description: BAD_REQUEST (invalid projectId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }

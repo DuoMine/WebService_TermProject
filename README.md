@@ -186,24 +186,65 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 
 ### 공통 응답 포맷
 
-#### 성공 응답
+### 성공 응답
+
+성공 응답은 **공통 래핑을 사용하지 않으며**,  
+각 API에서 정의한 **실제 데이터(JSON)를 그대로 반환**한다.
+
+#### 단건 / 생성 / 수정 응답 예시
 ```json
 {
-  "success": true,
-  "data": { },
-  "meta": {
-    "page": 0,
-    "size": 20,
-    "totalElements": 153,
-    "totalPages": 8
+  "user": {
+    "id": 1,
+    "email": "user@test.com",
+    "name": "user1",
+    "role": "USER",
+    "status": "ACTIVE"
   }
 }
 ```
 
-- `data`: 실제 응답 데이터
-- `meta`: (목록 조회 시) 페이지네이션 정보, 단건 조회 시 생략 가능
+또는
 
-#### 실패 응답
+```json
+{
+  "workspace": {
+    "id": 10,
+    "name": "team-a",
+    "description": null,
+    "owner_id": 1,
+    "created_at": "2025-03-05T12:00:00Z"
+  }
+}
+```
+
+#### 목록(페이지네이션) 응답 예시
+```json
+{
+  "content": [ ... ],
+  "page": 1,
+  "size": 20,
+  "totalElements": 153,
+  "totalPages": 8,
+  "sort": "created_at,DESC"
+}
+```
+
+- `content`: 조회 결과 목록
+- `page`: 현재 페이지 번호 (1-base)
+- `size`: 페이지 크기
+- `totalElements`: 전체 데이터 수
+- `totalPages`: 전체 페이지 수
+- `sort`: 정렬 기준 (`field,ASC|DESC`)
+
+> 목록 응답 또한 별도의 `meta` 객체 없이 루트에 직접 반환한다.
+
+---
+
+### 실패 응답 (공통)
+
+모든 실패 응답은 아래 포맷을 따른다.
+
 ```json
 {
   "success": false,
@@ -220,11 +261,11 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 
 | 필드명 | 설명 |
 |------|------|
-| success | 성공 여부 |
+| success | 항상 `false` |
 | timestamp | 에러 발생 시각 (ISO 8601) |
 | path | 요청 경로 |
 | status | HTTP 상태 코드 |
-| code | 시스템 내부 응답 코드 |
+| code | 시스템 내부 에러 코드 |
 | message | 사용자에게 전달할 메시지 |
 | details | (선택) 필드별 상세 오류 정보 |
 
@@ -251,20 +292,20 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 | **429** | TOO_MANY_REQUESTS | 요청 한도 초과 (Rate Limit) |
 | **500** | INTERNAL_SERVER_ERROR | 서버 내부 오류 |
 | 500 | DATABASE_ERROR | 데이터베이스 처리 오류 |
-| **503** | SERVICE_UNAVAILABLE | 외부 서비스 또는 인프라 장애 (DB/Redis 등) |
+| 500 | UNKNOWN_ERROR | 알 수 없는 오류 (fallback) |
 
 ---
 
 ### 응답 처리 규칙
 
-1. 모든 API는 성공/실패 여부를 `success` 필드로 명확히 구분한다.
-2. 모든 실패 응답은 위 실패 응답 포맷을 따른다.
+1. 성공 응답에는 `success` 필드를 포함하지 않는다.
+2. 모든 실패 응답은 공통 실패 응답 포맷을 따른다.
 3. Validation 실패 시 필드별 오류를 `details` 객체로 포함한다.
-4. Swagger 문서의 각 엔드포인트에는 최소 다음 응답을 명시한다.
-   - 200 / 201 / 204
-   - 400 / 401 / 403 / 404 / 409 / 422 / 429 
-   - 500 / 503
-5. Postman Collection에는 대표적인 성공/실패 케이스 검증 요청을 포함한다.
+4. 페이지네이션 응답은 `content + page 정보`를 루트에 직접 반환한다.
+5. Swagger 문서에는 각 엔드포인트에서 **실제로 발생 가능한 응답 코드만** 명시한다.
+6. `204 No Content` 응답은 본문(body)을 포함하지 않는다.
+7. Postman Collection에는 대표적인 성공/실패 케이스 검증 요청을 포함한다.
+
 ---
 
 ## 11) 성능 / 보안 고려사항

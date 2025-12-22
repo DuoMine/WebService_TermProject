@@ -1,10 +1,5 @@
 // src/docs/swagger.js
 import swaggerJSDoc from "swagger-jsdoc";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export const swaggerSpec = swaggerJSDoc({
   definition: {
@@ -55,7 +50,6 @@ export const swaggerSpec = swaggerJSDoc({
           required: ["ok", "data"],
         },
 
-        // ✅ 아래 스키마들은 실제 컬럼명과 맞춰라 (2번 참고)
         User: {
           type: "object",
           properties: {
@@ -157,9 +151,11 @@ export const swaggerSpec = swaggerJSDoc({
     },
   },
 
-  // ✅ cwd 영향 제거
-  apis: [
-    path.join(__dirname, "../routes/**/*.js"),
-    path.join(__dirname, "../app.js"),
-  ],
+  apis: ["./src/routes/*.js", "./src/app.js"],
 });
+console.log(
+  "[swaggerSpec]",
+  Object.keys(swaggerSpec.paths || {}),
+  "count:",
+  Object.keys(swaggerSpec.paths || {}).length
+);

@@ -40,16 +40,22 @@ function userPublic(u) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [user]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -74,26 +80,27 @@ function userPublic(u) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [user]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
  *       400:
- *         description: VALIDATION_FAILED
+ *         description: VALIDATION_FAILED (details 포함 가능)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -103,26 +110,20 @@ function userPublic(u) {
  *     summary: Delete my account (soft delete)
  *     security: [{ cookieAuth: [] }]
  *     responses:
- *       200:
- *         description: ok (USER_DELETED)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     message: { type: string, example: "USER_DELETED" }
- *               required: [ok, data]
+ *       204:
+ *         description: No Content (deleted)
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -145,7 +146,9 @@ router
     const { name } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
+      return sendError(res, "VALIDATION_FAILED", "validation failed", {
+        name: "must be at least 2 chars",
+      });
     }
 
     const u = await User.findOne({ where: { id: userId } });
@@ -195,31 +198,32 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [user]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
  *       400:
- *         description: VALIDATION_FAILED
+ *         description: VALIDATION_FAILED (details 포함 가능)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: FORBIDDEN
+ *         description: FORBIDDEN ( requireAdmin)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: DUPLICATE_RESOURCE
+ *         description: DUPLICATE_RESOURCE (email already exists)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -227,7 +231,7 @@ router
  *   get:
  *     tags: [Users]
  *     summary: List users (ADMIN only)
- *     description: 'Pagination(1-base) + sort + filters(keyword/role/status). 기본은 DELETED 제외.'
+ *     description: 'Pagination(1-base) + sort + filters(keyword/role/status). 기본은 DELETED 제외. Allowed sort fields: id, created_at, updated_at, email, name, role, status'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: query
@@ -261,6 +265,7 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
  *               properties:
  *                 content:
  *                   type: array
@@ -271,14 +276,18 @@ router
  *                 totalElements: { type: integer, example: 153 }
  *                 totalPages: { type: integer, example: 8 }
  *                 sort: { type: string, example: "created_at,DESC" }
- *               required: [content, page, size, totalElements, totalPages]
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: FORBIDDEN
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -292,7 +301,9 @@ router
       return sendError(res, "VALIDATION_FAILED", "validation failed", { email: "required" });
     }
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
+      return sendError(res, "VALIDATION_FAILED", "validation failed", {
+        name: "must be at least 2 chars",
+      });
     }
 
     const exists = await User.findOne({ where: { email } });
@@ -349,7 +360,9 @@ router
     });
 
     // 5) response: 과제 포맷 그대로(래핑 없이)
-    return sendOk(res, toPageResult({ rows: result.rows.map(userPublic), count: result.count }, page, size, sort)
+    return sendOk(
+      res,
+      toPageResult({ rows: result.rows.map(userPublic), count: result.count }, page, size, sort)
     );
   });
 
@@ -372,26 +385,27 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [user]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: FORBIDDEN
+ *         description: FORBIDDEN ( requireAdmin)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -431,31 +445,32 @@ router
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [user]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: "#/components/schemas/User"
- *               required: [ok, data]
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
  *       400:
- *         description: VALIDATION_FAILED
+ *         description: VALIDATION_FAILED (details 포함 가능)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: FORBIDDEN
+ *         description: FORBIDDEN ( requireAdmin)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -470,31 +485,25 @@ router
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
- *         description: ok (USER_DELETED)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     message: { type: string, example: "USER_DELETED" }
- *               required: [ok, data]
+ *       204:
+ *         description: No Content (deleted)
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED ( requireAuth)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: FORBIDDEN
+ *         description: FORBIDDEN ( requireAdmin)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -518,21 +527,23 @@ router
 
     if (name !== undefined) {
       if (typeof name !== "string" || name.trim().length < 2) {
-        return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
+        return sendError(res, "VALIDATION_FAILED", "validation failed", {
+          name: "must be at least 2 chars",
+        });
       }
       u.name = name.trim();
     }
 
     if (role !== undefined) {
       if (!["USER", "ADMIN"].includes(role)) {
-        return sendError(res, "VALIDATION_FAILED", "validation failed", { role: "invalid role"});
+        return sendError(res, "VALIDATION_FAILED", "validation failed", { role: "invalid role" });
       }
       u.role = role;
     }
 
     if (status !== undefined) {
       if (!["ACTIVE", "SUSPENDED", "DELETED"].includes(status)) {
-        return sendError(res, "VALIDATION_FAILED", "validation failed", {status: "invalid status"});
+        return sendError(res, "VALIDATION_FAILED", "validation failed", { status: "invalid status" });
       }
       u.status = status;
     }

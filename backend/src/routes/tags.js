@@ -73,7 +73,7 @@ async function loadProjectTaskOr404(req, res) {
  *   get:
  *     tags: [Tags]
  *     summary: List workspace tags
- *     description: 'Pagination(1-base) + sort + filters(keyword,dateFrom/dateTo)'
+ *     description: 'Pagination(1-base) + sort + filters(keyword,dateFrom/dateTo). Allowed sort fields: id, name, created_at'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -111,6 +111,7 @@ async function loadProjectTaskOr404(req, res) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
  *               properties:
  *                 content:
  *                   type: array
@@ -121,9 +122,13 @@ async function loadProjectTaskOr404(req, res) {
  *                 totalElements: { type: integer, example: 153 }
  *                 totalPages: { type: integer, example: 8 }
  *                 sort: { type: string, example: "name,ASC" }
- *               required: [content, page, size, totalElements, totalPages]
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -153,31 +158,27 @@ async function loadProjectTaskOr404(req, res) {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [tag]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     tag:
- *                       $ref: "#/components/schemas/Tag"
- *               required: [ok, data]
+ *                 tag:
+ *                   $ref: "#/components/schemas/Tag"
  *       400:
- *         description: BAD_REQUEST (name required / invalid workspace_id / invalid tag data)
+ *         description: BAD_REQUEST (name required / invalid workspace_id / invalid tag data). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: DUPLICATE_RESOURCE
+ *         description: DUPLICATE_RESOURCE (tag already exists)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: INTERNAL_SERVER_ERROR
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -265,20 +266,25 @@ router
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
- *         description: ok
+ *       204:
+ *         description: No Content (deleted)
  *       400:
- *         description: BAD_REQUEST (invalid tagId)
+ *         description: BAD_REQUEST (invalid tagId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (tag not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -314,7 +320,7 @@ router.delete("/tags/:tagId", async (req, res) => {
  *   get:
  *     tags: [Tags]
  *     summary: List tags attached to task
- *     description: 'Pagination(1-base) + sort + filters(keyword,tagId,dateFrom/dateTo). 기본은 TaskTag.created_at ASC. include로 Tag 포함.'
+ *     description: 'Pagination(1-base) + sort + filters(keyword,tagId,dateFrom/dateTo). include로 Tag 포함. Allowed sort fields: created_at, tag_id'
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -327,10 +333,6 @@ router.delete("/tags/:tagId", async (req, res) => {
  *         schema: { type: integer }
  *       - in: path
  *         name: taskId
- *         required: true
- *         schema: { type: integer }
- *       - in: path
- *         name: projectId
  *         required: true
  *         schema: { type: integer }
  *       - in: query
@@ -368,6 +370,7 @@ router.delete("/tags/:tagId", async (req, res) => {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
  *               properties:
  *                 content:
  *                   type: array
@@ -384,19 +387,23 @@ router.delete("/tags/:tagId", async (req, res) => {
  *                 totalElements: { type: integer, example: 153 }
  *                 totalPages: { type: integer, example: 8 }
  *                 sort: { type: string, example: "created_at,ASC" }
- *               required: [content, page, size, totalElements, totalPages]
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: RESOURCE_NOT_FOUND (project not found / task not found / tag not found in workspace)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -404,7 +411,7 @@ router.delete("/tags/:tagId", async (req, res) => {
  *   post:
  *     tags: [Tags]
  *     summary: Attach tag to task
- *     description: tagId는 같은 workspace에 속해야 한다. 중복 부착은 STATE_CONFLICT.
+ *     description: tagId는 같은 workspace에 속해야 한다. 중복 부착(유니크키)은 STATE_CONFLICT.
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -435,25 +442,21 @@ router.delete("/tags/:tagId", async (req, res) => {
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [taskTag]
  *               properties:
- *                 ok: { type: boolean, example: true }
- *                 data:
+ *                 taskTag:
  *                   type: object
  *                   properties:
- *                     taskTag:
- *                       type: object
- *                       properties:
- *                         task_id: { type: integer, example: 10 }
- *                         tag_id: { type: integer, example: 3 }
- *                         created_at: { type: string, example: "2025-12-23T12:00:00.000Z" }
- *               required: [ok, data]
+ *                     task_id: { type: integer, example: 10 }
+ *                     tag_id: { type: integer, example: 3 }
+ *                     created_at: { type: string, example: "2025-12-23T12:00:00.000Z" }
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId / tagId required)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / tagId required). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -464,6 +467,11 @@ router.delete("/tags/:tagId", async (req, res) => {
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
  *         description: STATE_CONFLICT (tag already attached)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -567,20 +575,25 @@ router
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
- *         description: ok
+ *       204:
+ *         description: No Content (detached)
  *       400:
- *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid tagId)
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid tagId). VALIDATION_FAILED may include details.
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
- *       401:
- *         description: FORBIDDEN / not member (middleware)
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
