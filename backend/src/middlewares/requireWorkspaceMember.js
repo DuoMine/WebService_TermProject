@@ -16,13 +16,18 @@ export function requireWorkspaceMember({ allowAdmin = true } = {}) {
       const raw = req.params.workspaceId ?? req.params.id;
       const workspaceId = Number.parseInt(raw, 10);
 
-      if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+      if (!userId) {
+        return sendError(res, "UNAUTHORIZED", "missing auth");
+      }
+
       if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
-        return sendError(res, 400, "BAD_REQUEST", "invalid workspaceId");
+        return sendError(res, "BAD_REQUEST", "invalid workspaceId");
       }
 
       const ws = await models.Workspace.findByPk(workspaceId);
-      if (!ws) return sendError(res, 404, "WORKSPACE_NOT_FOUND", "workspace not found");
+      if (!ws) {
+        return sendError(res, "RESOURCE_NOT_FOUND", "workspace not found");
+      }
 
       // ADMIN 우회
       if (allowAdmin && role === "ADMIN") {
@@ -34,7 +39,9 @@ export function requireWorkspaceMember({ allowAdmin = true } = {}) {
         where: { workspace_id: workspaceId, user_id: userId },
       });
 
-      if (!member) return sendError(res, 403, "FORBIDDEN", "not a workspace member");
+      if (!member) {
+        return sendError(res, "FORBIDDEN", "not a workspace member");
+      }
 
       req.workspace = ws;
       return next();
@@ -56,11 +63,11 @@ export function requireWorkspaceOwner({ allowAdmin = true } = {}) {
     if (allowAdmin && role === "ADMIN") return next();
 
     if (!req.workspace) {
-      return sendError(res, 500, "INTERNAL_ERROR", "workspace not loaded");
+      return sendError(res, "INTERNAL_SERVER_ERROR", "workspace not loaded");
     }
 
     if (req.workspace.owner_id !== userId) {
-      return sendError(res, 403, "FORBIDDEN", "workspace owner only");
+      return sendError(res, "FORBIDDEN", "workspace owner only");
     }
 
     return next();

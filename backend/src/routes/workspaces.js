@@ -60,7 +60,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: INTERNAL_ERROR
+ *         description: INTERNAL_SERVER_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -139,10 +139,10 @@ router
       );
 
       await t.commit();
-      return sendOk(res, { workspace: ws }, 201);
+      return sendCreated(res, { workspace: ws });
     } catch (e) {
       await t.rollback();
-      return sendError(res, 500, "INTERNAL_ERROR", e.message);
+      return sendError(res, 500, "INTERNAL_SERVER_ERROR", "internal server error");
     }
   })
   .get(requireAuth, async (req, res) => {
@@ -228,7 +228,7 @@ router
  *                       $ref: "#/components/schemas/Workspace"
  *               required: [ok, data]
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -267,7 +267,7 @@ router
  *                       $ref: "#/components/schemas/Workspace"
  *               required: [ok, data]
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -290,7 +290,7 @@ router
  *       200:
  *         description: ok
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -384,7 +384,7 @@ router
  *                 sort: { type: string, example: "created_at,ASC" }
  *               required: [content, page, size, totalElements, totalPages]
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -392,7 +392,7 @@ router
  *   post:
  *     tags: [Workspaces]
  *     summary: Add member to workspace (OWNER)
- *     description: owner는 이미 멤버로 간주되며, 중복 추가는 CONFLICT.
+ *     description: owner는 이미 멤버로 간주되며, 중복 추가는 DUPLICATE_RESOURCE.
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -417,7 +417,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -427,7 +427,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: CONFLICT (owner already member / already member)
+ *         description: DUPLICATE_RESOURCE (owner already member / already member)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -484,13 +484,13 @@ router
     if (!userId) return sendError(res, 400, "BAD_REQUEST", "userId required");
 
     if (Number(userId) === req.workspace.owner_id) {
-      return sendError(res, 409, "CONFLICT", "owner already member");
+      return sendError(res, 409, "DUPLICATE_RESOURCE", "owner already member");
     }
 
     const existed = await models.WorkspaceMember.findOne({
       where: { workspace_id: workspaceId, user_id: userId },
     });
-    if (existed) return sendError(res, 409, "CONFLICT", "already member");
+    if (existed) return sendError(res, 409, "DUPLICATE_RESOURCE", "already member");
 
     await models.WorkspaceMember.create({ workspace_id: workspaceId, user_id: userId });
     return sendOk(res);
@@ -522,7 +522,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }

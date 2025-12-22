@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -22,11 +22,11 @@ async function loadProjectTaskOr404(req, res) {
   const taskId = Number(req.params.taskId);
 
   if (!projectId) {
-    sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    sendError(res, "BAD_REQUEST", "invalid projectId");
     return null;
   }
   if (!taskId) {
-    sendError(res, 400, "BAD_REQUEST", "invalid taskId");
+    sendError(res, "BAD_REQUEST", "invalid taskId");
     return null;
   }
 
@@ -34,7 +34,7 @@ async function loadProjectTaskOr404(req, res) {
     where: { id: projectId, workspace_id: workspaceId, deleted_at: null },
   });
   if (!project) {
-    sendError(res, 404, "NOT_FOUND", "project not found");
+    sendError(res, "RESOURCE_NOT_FOUND", "project not found");
     return null;
   }
 
@@ -42,7 +42,7 @@ async function loadProjectTaskOr404(req, res) {
     where: { id: taskId, project_id: projectId, deleted_at: null },
   });
   if (!task) {
-    sendError(res, 404, "NOT_FOUND", "task not found");
+    sendError(res, "RESOURCE_NOT_FOUND", "task not found");
     return null;
   }
 
@@ -129,12 +129,12 @@ async function loadProjectTaskOr404(req, res) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -186,12 +186,12 @@ async function loadProjectTaskOr404(req, res) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -208,19 +208,13 @@ router
     const { page, size, offset, limit } = parsePagination(req.query);
 
     // ✅ 2) sort whitelist
-    const { sort, order } = parseSort(
-      req.query,
-      ["id", "created_at", "user_id"],
-      "created_at,ASC"
-    );
+    const { sort, order } = parseSort(req.query, ["id", "created_at", "user_id"], "created_at,ASC");
 
     // ✅ 3) filters: keyword/authorId/dateFrom/dateTo
     const f = parseFilters(req.query);
     const where = { task_id: taskId, deleted_at: null };
 
-    if (f.keyword) {
-      where.content = { [Op.like]: `%${f.keyword}%` };
-    }
+    if (f.keyword) where.content = { [Op.like]: `%${f.keyword}%` };
 
     if (f.authorId) {
       const aid = Number(f.authorId);
@@ -251,7 +245,7 @@ router
     const userId = req.auth.userId;
     const { content } = req.body;
 
-    if (!content) return sendError(res, 400, "BAD_REQUEST", "content required");
+    if (!content) return sendError(res, "BAD_REQUEST", "content required");
 
     const c = await models.Comment.create({
       task_id: taskId,
@@ -259,7 +253,7 @@ router
       content,
     });
 
-    return sendOk(res, { comment: c }, 201);
+    return sendCreated(res, { comment: c });
   });
 
 /**
@@ -315,12 +309,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found / comment not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / comment not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -355,12 +349,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found / comment not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / comment not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -373,14 +367,14 @@ router
 
     const taskId = Number(req.params.taskId);
     const commentId = Number(req.params.commentId);
-    if (!commentId) return sendError(res, 400, "BAD_REQUEST", "invalid commentId");
+    if (!commentId) return sendError(res, "BAD_REQUEST", "invalid commentId");
 
     const { content } = req.body;
 
     const c = await models.Comment.findOne({
       where: { id: commentId, task_id: taskId, deleted_at: null },
     });
-    if (!c) return sendError(res, 404, "NOT_FOUND", "comment not found");
+    if (!c) return sendError(res, "RESOURCE_NOT_FOUND", "comment not found");
 
     if (content !== undefined) c.content = content;
     await c.save();
@@ -393,12 +387,12 @@ router
 
     const taskId = Number(req.params.taskId);
     const commentId = Number(req.params.commentId);
-    if (!commentId) return sendError(res, 400, "BAD_REQUEST", "invalid commentId");
+    if (!commentId) return sendError(res, "BAD_REQUEST", "invalid commentId");
 
     const c = await models.Comment.findOne({
       where: { id: commentId, task_id: taskId, deleted_at: null },
     });
-    if (!c) return sendError(res, 404, "NOT_FOUND", "comment not found");
+    if (!c) return sendError(res, "RESOURCE_NOT_FOUND", "comment not found");
 
     c.deleted_at = new Date();
     await c.save();

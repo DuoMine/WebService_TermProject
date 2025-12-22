@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -82,7 +82,7 @@ const router = express.Router({ mergeParams: true });
  *                 sort: { type: string, example: "created_at,DESC" }
  *               required: [content, page, size, totalElements, totalPages]
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -127,7 +127,7 @@ const router = express.Router({ mergeParams: true });
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -184,7 +184,7 @@ router
     const userId = req.auth.userId;
     const { name, description } = req.body;
 
-    if (!name) return sendError(res, 400, "BAD_REQUEST", "name required");
+    if (!name) return sendError(res, "BAD_REQUEST", "name required");
 
     const p = await models.Project.create({
       workspace_id: workspaceId,
@@ -194,7 +194,7 @@ router
       created_by: userId,
     });
 
-    return sendOk(res, { project: p }, 201);
+    return sendCreated(res, { project: p });
   });
 
 /**
@@ -234,12 +234,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found)
+ *         description: RESOURCE_NOT_FOUND (project not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -289,12 +289,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found)
+ *         description: RESOURCE_NOT_FOUND (project not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -321,12 +321,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found)
+ *         description: RESOURCE_NOT_FOUND (project not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -336,24 +336,24 @@ router
   .get(async (req, res) => {
     const workspaceId = req.workspace.id;
     const projectId = Number(req.params.projectId);
-    if (!projectId) return sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    if (!projectId) return sendError(res, "BAD_REQUEST", "invalid projectId");
 
     const p = await models.Project.findOne({
       where: { id: projectId, workspace_id: workspaceId, deleted_at: null },
     });
-    if (!p) return sendError(res, 404, "NOT_FOUND", "project not found");
+    if (!p) return sendError(res, "RESOURCE_NOT_FOUND", "project not found");
 
     return sendOk(res, { project: p });
   })
   .patch(async (req, res) => {
     const workspaceId = req.workspace.id;
     const projectId = Number(req.params.projectId);
-    if (!projectId) return sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    if (!projectId) return sendError(res, "BAD_REQUEST", "invalid projectId");
 
     const p = await models.Project.findOne({
       where: { id: projectId, workspace_id: workspaceId, deleted_at: null },
     });
-    if (!p) return sendError(res, 404, "NOT_FOUND", "project not found");
+    if (!p) return sendError(res, "RESOURCE_NOT_FOUND", "project not found");
 
     const { name, description, status } = req.body;
 
@@ -362,7 +362,7 @@ router
 
     if (status !== undefined) {
       if (!["ACTIVE", "ARCHIVED"].includes(status)) {
-        return sendError(res, 400, "BAD_REQUEST", "invalid status");
+        return sendError(res, "BAD_REQUEST", "invalid status");
       }
       p.status = status;
     }
@@ -373,12 +373,12 @@ router
   .delete(async (req, res) => {
     const workspaceId = req.workspace.id;
     const projectId = Number(req.params.projectId);
-    if (!projectId) return sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    if (!projectId) return sendError(res, "BAD_REQUEST", "invalid projectId");
 
     const p = await models.Project.findOne({
       where: { id: projectId, workspace_id: workspaceId, deleted_at: null },
     });
-    if (!p) return sendError(res, 404, "NOT_FOUND", "project not found");
+    if (!p) return sendError(res, "RESOURCE_NOT_FOUND", "project not found");
 
     p.deleted_at = new Date();
     await p.save();

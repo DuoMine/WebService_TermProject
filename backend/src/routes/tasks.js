@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -24,7 +24,7 @@ async function loadProjectOr404(req, res) {
   const projectId = Number(req.params.projectId);
 
   if (!projectId) {
-    sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    sendError(res, "BAD_REQUEST", "invalid projectId");
     return null;
   }
 
@@ -33,7 +33,7 @@ async function loadProjectOr404(req, res) {
   });
 
   if (!project) {
-    sendError(res, 404, "NOT_FOUND", "project not found");
+    sendError(res, "RESOURCE_NOT_FOUND", "project not found");
     return null;
   }
 
@@ -120,12 +120,12 @@ async function loadProjectOr404(req, res) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found)
+ *         description: RESOURCE_NOT_FOUND (project not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -179,12 +179,12 @@ async function loadProjectOr404(req, res) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found)
+ *         description: RESOURCE_NOT_FOUND (project not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -251,13 +251,13 @@ router
     const userId = req.auth.userId;
 
     const { title, description, status, priority, dueAt, assigneeId } = req.body;
-    if (!title) return sendError(res, 400, "BAD_REQUEST", "title required");
+    if (!title) return sendError(res, "BAD_REQUEST", "title required");
 
     if (status !== undefined && !VALID_STATUS.includes(status)) {
-      return sendError(res, 400, "BAD_REQUEST", "invalid status");
+      return sendError(res, "BAD_REQUEST", "invalid status");
     }
     if (priority !== undefined && !VALID_PRIORITY.includes(priority)) {
-      return sendError(res, 400, "BAD_REQUEST", "invalid priority");
+      return sendError(res, "BAD_REQUEST", "invalid priority");
     }
 
     const task = await models.Task.create({
@@ -271,7 +271,7 @@ router
       assignee_id: assigneeId ?? null,
     });
 
-    return sendOk(res, { task }, 201);
+    return sendCreated(res, { task });
   });
 
 /**
@@ -315,12 +315,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -377,12 +377,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -413,12 +413,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -431,12 +431,12 @@ router
 
     const projectId = Number(req.params.projectId);
     const taskId = Number(req.params.taskId);
-    if (!taskId) return sendError(res, 400, "BAD_REQUEST", "invalid taskId");
+    if (!taskId) return sendError(res, "BAD_REQUEST", "invalid taskId");
 
     const task = await models.Task.findOne({
       where: { id: taskId, project_id: projectId, deleted_at: null },
     });
-    if (!task) return sendError(res, 404, "NOT_FOUND", "task not found");
+    if (!task) return sendError(res, "RESOURCE_NOT_FOUND", "task not found");
 
     return sendOk(res, { task });
   })
@@ -446,20 +446,20 @@ router
 
     const projectId = Number(req.params.projectId);
     const taskId = Number(req.params.taskId);
-    if (!taskId) return sendError(res, 400, "BAD_REQUEST", "invalid taskId");
+    if (!taskId) return sendError(res, "BAD_REQUEST", "invalid taskId");
 
     const task = await models.Task.findOne({
       where: { id: taskId, project_id: projectId, deleted_at: null },
     });
-    if (!task) return sendError(res, 404, "NOT_FOUND", "task not found");
+    if (!task) return sendError(res, "RESOURCE_NOT_FOUND", "task not found");
 
     const { title, description, status, priority, dueAt, assigneeId } = req.body;
 
     if (status !== undefined && !VALID_STATUS.includes(status)) {
-      return sendError(res, 400, "BAD_REQUEST", "invalid status");
+      return sendError(res, "BAD_REQUEST", "invalid status");
     }
     if (priority !== undefined && !VALID_PRIORITY.includes(priority)) {
-      return sendError(res, 400, "BAD_REQUEST", "invalid priority");
+      return sendError(res, "BAD_REQUEST", "invalid priority");
     }
 
     if (title !== undefined) task.title = title;
@@ -478,12 +478,12 @@ router
 
     const projectId = Number(req.params.projectId);
     const taskId = Number(req.params.taskId);
-    if (!taskId) return sendError(res, 400, "BAD_REQUEST", "invalid taskId");
+    if (!taskId) return sendError(res, "BAD_REQUEST", "invalid taskId");
 
     const task = await models.Task.findOne({
       where: { id: taskId, project_id: projectId, deleted_at: null },
     });
-    if (!task) return sendError(res, 404, "NOT_FOUND", "task not found");
+    if (!task) return sendError(res, "RESOURCE_NOT_FOUND", "task not found");
 
     task.deleted_at = new Date();
     await task.save();

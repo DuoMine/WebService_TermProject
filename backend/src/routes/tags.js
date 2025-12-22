@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -23,11 +23,11 @@ async function loadProjectTaskOr404(req, res) {
   const taskId = Number(req.params.taskId);
 
   if (!projectId) {
-    sendError(res, 400, "BAD_REQUEST", "invalid projectId");
+    sendError(res, "BAD_REQUEST", "invalid projectId");
     return null;
   }
   if (!taskId) {
-    sendError(res, 400, "BAD_REQUEST", "invalid taskId");
+    sendError(res, "BAD_REQUEST", "invalid taskId");
     return null;
   }
 
@@ -35,7 +35,7 @@ async function loadProjectTaskOr404(req, res) {
     where: { id: projectId, workspace_id: workspaceId, deleted_at: null },
   });
   if (!project) {
-    sendError(res, 404, "NOT_FOUND", "project not found");
+    sendError(res, "RESOURCE_NOT_FOUND", "project not found");
     return null;
   }
 
@@ -43,7 +43,7 @@ async function loadProjectTaskOr404(req, res) {
     where: { id: taskId, project_id: projectId, deleted_at: null },
   });
   if (!task) {
-    sendError(res, 404, "NOT_FOUND", "task not found");
+    sendError(res, "RESOURCE_NOT_FOUND", "task not found");
     return null;
   }
 
@@ -123,7 +123,7 @@ async function loadProjectTaskOr404(req, res) {
  *                 sort: { type: string, example: "name,ASC" }
  *               required: [content, page, size, totalElements, totalPages]
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -167,17 +167,17 @@ async function loadProjectTaskOr404(req, res) {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: CONFLICT (tag already exists)
+ *         description: DUPLICATE_RESOURCE
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: INTERNAL_ERROR (failed to create tag)
+ *         description: INTERNAL_SERVER_ERROR
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -218,11 +218,11 @@ router
     const workspaceId = req.workspace.id;
     const { name } = req.body;
 
-    if (!name) return sendError(res, 400, "BAD_REQUEST", "name required");
+    if (!name) return sendError(res, "BAD_REQUEST", "name required");
 
     try {
       const tag = await models.Tag.create({ workspace_id: workspaceId, name });
-      return sendOk(res, { tag }, 201);
+      return sendCreated(res, { tag });
     } catch (e) {
       console.error(
         "[POST /tags] create failed:",
@@ -233,17 +233,17 @@ router
       );
 
       if (e?.name === "SequelizeUniqueConstraintError") {
-        return sendError(res, 409, "CONFLICT", "tag already exists");
+        return sendError(res, "DUPLICATE_RESOURCE", "tag already exists");
       }
 
       if (e?.name === "SequelizeForeignKeyConstraintError") {
-        return sendError(res, 400, "BAD_REQUEST", "invalid workspace_id");
+        return sendError(res, "BAD_REQUEST", "invalid workspace_id");
       }
       if (e?.name === "SequelizeValidationError") {
-        return sendError(res, 400, "BAD_REQUEST", "invalid tag data");
+        return sendError(res, "BAD_REQUEST", "invalid tag data");
       }
 
-      return sendError(res, 500, "INTERNAL_ERROR", "failed to create tag");
+      return sendError(res, "INTERNAL_SERVER_ERROR", "failed to create tag");
     }
   });
 
@@ -253,7 +253,7 @@ router
  *   delete:
  *     tags: [Tags]
  *     summary: Delete workspace tag
- *     description: 물리 삭제(destroy). tagId가 workspace에 속하지 않으면 NOT_FOUND.
+ *     description: 물리 삭제(destroy). tagId가 workspace에 속하지 않으면 RESOURCE_NOT_FOUND.
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -273,12 +273,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (tag not found)
+ *         description: RESOURCE_NOT_FOUND (tag not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -287,12 +287,12 @@ router.delete("/tags/:tagId", async (req, res) => {
   const workspaceId = req.workspace.id;
   const tagId = Number(req.params.tagId);
 
-  if (!tagId) return sendError(res, 400, "BAD_REQUEST", "invalid tagId");
+  if (!tagId) return sendError(res, "BAD_REQUEST", "invalid tagId");
 
   const tag = await models.Tag.findOne({
     where: { id: tagId, workspace_id: workspaceId },
   });
-  if (!tag) return sendError(res, 404, "NOT_FOUND", "tag not found");
+  if (!tag) return sendError(res, "RESOURCE_NOT_FOUND", "tag not found");
 
   await tag.destroy();
   return sendOk(res);
@@ -327,6 +327,10 @@ router.delete("/tags/:tagId", async (req, res) => {
  *         schema: { type: integer }
  *       - in: path
  *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
  *         required: true
  *         schema: { type: integer }
  *       - in: query
@@ -387,12 +391,12 @@ router.delete("/tags/:tagId", async (req, res) => {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / tag not found in workspace)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -400,7 +404,7 @@ router.delete("/tags/:tagId", async (req, res) => {
  *   post:
  *     tags: [Tags]
  *     summary: Attach tag to task
- *     description: tagId는 같은 workspace에 속해야 한다. 중복 부착은 CONFLICT.
+ *     description: tagId는 같은 workspace에 속해야 한다. 중복 부착은 STATE_CONFLICT.
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -449,17 +453,17 @@ router.delete("/tags/:tagId", async (req, res) => {
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found / tag not found in workspace)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / tag not found in workspace)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: CONFLICT (tag already attached)
+ *         description: STATE_CONFLICT (tag already attached)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -522,18 +526,19 @@ router
     const taskId = Number(req.params.taskId);
     const { tagId } = req.body;
 
-    if (!tagId) return sendError(res, 400, "BAD_REQUEST", "tagId required");
+    if (!tagId) return sendError(res, "BAD_REQUEST", "tagId required");
 
     const tag = await models.Tag.findOne({
       where: { id: tagId, workspace_id: workspaceId },
     });
-    if (!tag) return sendError(res, 404, "NOT_FOUND", "tag not found in workspace");
+    if (!tag) return sendError(res, "RESOURCE_NOT_FOUND", "tag not found in workspace");
 
     try {
       const row = await models.TaskTag.create({ task_id: taskId, tag_id: tagId });
       return sendOk(res, { taskTag: row });
     } catch (e) {
-      return sendError(res, 409, "CONFLICT", "tag already attached");
+      // 중복 부착(유니크키) -> 상태 충돌
+      return sendError(res, "STATE_CONFLICT", "tag already attached");
     }
   });
 
@@ -570,12 +575,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED / not member (middleware)
+ *         description: FORBIDDEN / not member (middleware)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
- *         description: NOT_FOUND (project not found / task not found)
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -585,7 +590,7 @@ router.delete("/projects/:projectId/tasks/:taskId/tags/:tagId", async (req, res)
   if (!ok) return;
 
   const tagId = Number(req.params.tagId);
-  if (!tagId) return sendError(res, 400, "BAD_REQUEST", "invalid tagId");
+  if (!tagId) return sendError(res, "BAD_REQUEST", "invalid tagId");
 
   const taskId = Number(req.params.taskId);
   await models.TaskTag.destroy({ where: { task_id: taskId, tag_id: tagId } });

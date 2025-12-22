@@ -2,7 +2,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { models, sequelize } from "../models/index.js";
-import { sendError, sendOk } from "../utils/http.js";
+import { sendError, sendOk, sendCreated } from "../utils/http.js";
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
@@ -21,16 +21,12 @@ const { User, UserRefreshToken } = models;
 function isEmail(s) {
   return typeof s === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
-
 function isNonEmptyString(s, max) {
   return typeof s === "string" && s.trim().length > 0 && s.trim().length <= max;
 }
-
 function isStrongPassword(pw) {
-  // 최소 8~64
   return typeof pw === "string" && pw.length >= 8 && pw.length <= 64;
 }
-
 function userPublic(u) {
   return {
     id: u.id,
@@ -44,44 +40,6 @@ function userPublic(u) {
 
 /**
  * POST /api/auth/signup
- * body: { email, password, name }
- */
-/**
- * @swagger
- * /auth/signup:
- *   post:
- *     tags: [Auth]
- *     summary: Local signup
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password, name]
- *             properties:
- *               email: { type: string, example: "user@test.com" }
- *               password: { type: string, example: "pw1234!" }
- *               name: { type: string, example: "user1" }
- *     responses:
- *       200:
- *         description: Created + set cookies
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: "#/components/schemas/OkResponse"
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: object
- *                       properties:
- *                         user: { $ref: "#/components/schemas/User" }
- *       400:
- *         description: validation error
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/signup", async (req, res) => {
   const { email, password, name } = req.body ?? {};
@@ -108,7 +66,8 @@ router.post("/signup", async (req, res) => {
       status: "ACTIVE",
     });
 
-    return sendOk(res, { message: "signup ok", user: userPublic(u) }, 201);
+    // ✅ 201은 sendCreated
+    return sendCreated(res, { message: "signup ok", user: userPublic(u) });
   } catch (e) {
     console.error("POST /api/auth/signup error:", e);
     return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to signup");
@@ -117,50 +76,14 @@ router.post("/signup", async (req, res) => {
 
 /**
  * POST /api/auth/login
- * body: { email, password }
- * - access/refresh 쿠키 세팅
- */
-/**
- * @swagger
- * /auth/login:
- *   post:
- *     tags: [Auth]
- *     summary: Local login
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email: { type: string, example: "user@test.com" }
- *               password: { type: string, example: "pw1234!" }
- *     responses:
- *       200:
- *         description: ok + set cookies
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: "#/components/schemas/OkResponse"
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: object
- *                       properties:
- *                         user: { $ref: "#/components/schemas/User" }
- *       401:
- *         description: invalid credentials
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
   const details = {};
+
   if (!isEmail(email)) details.email = "invalid email";
   if (typeof password !== "string") details.password = "password is required";
+
   if (Object.keys(details).length) {
     return sendError(res, 422, "VALIDATION_FAILED", "validation failed", details);
   }
@@ -176,9 +99,7 @@ router.post("/login", async (req, res) => {
 
     const access = signAccessToken({ sub: String(u.id), role: u.role });
     const refresh = signRefreshToken({ sub: String(u.id), role: u.role });
-
-    const now = Date.now();
-    const expiresAt = new Date(now + refreshTtlSeconds() * 1000);
+    const expiresAt = new Date(Date.now() + refreshTtlSeconds() * 1000);
 
     await UserRefreshToken.create({
       user_id: u.id,
@@ -199,26 +120,6 @@ router.post("/login", async (req, res) => {
 
 /**
  * POST /api/auth/refresh
- * - refresh 쿠키 검증 + DB 토큰 해시 확인
- * - refresh token rotation: 기존 토큰 revoked 후 새 refresh 발급/저장
- */
-/**
- * @swagger
- * /auth/refresh:
- *   post:
- *     tags: [Auth]
- *     summary: Refresh access token (refresh rotation)
- *     responses:
- *       200:
- *         description: ok + re-issue cookies
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/OkResponse" }
- *       401:
- *         description: refresh invalid/expired
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -246,20 +147,19 @@ router.post("/refresh", async (req, res) => {
         lock: t.LOCK.UPDATE,
       });
 
+      // 표준 코드만 사용
       if (!row) throw Object.assign(new Error("not found"), { _http: 401, _code: "UNAUTHORIZED" });
       if (row.revoked_at) throw Object.assign(new Error("revoked"), { _http: 401, _code: "UNAUTHORIZED" });
-      if (new Date(row.expires_at).getTime() < Date.now())
+      if (new Date(row.expires_at).getTime() < Date.now()) {
         throw Object.assign(new Error("expired"), { _http: 401, _code: "TOKEN_EXPIRED" });
+      }
 
-      // 유저 상태 확인
-      const u = await User.findOne({ where: { id: userId }, transaction: t });
+      const u = await User.findOne({ where: { id: userId }, transaction: t, lock: t.LOCK.UPDATE });
       if (!u) throw Object.assign(new Error("user not found"), { _http: 401, _code: "UNAUTHORIZED" });
       if (u.status !== "ACTIVE") throw Object.assign(new Error("user not active"), { _http: 403, _code: "FORBIDDEN" });
 
-      // revoke old
       await row.update({ revoked_at: new Date() }, { transaction: t });
 
-      // issue new
       const newAccess = signAccessToken({ sub: String(u.id), role: u.role });
       const newRefresh = signRefreshToken({ sub: String(u.id), role: u.role });
       const expiresAt = new Date(Date.now() + refreshTtlSeconds() * 1000);
@@ -281,33 +181,15 @@ router.post("/refresh", async (req, res) => {
     res.cookie(REFRESH_COOKIE_NAME, result.newRefresh, getRefreshCookieOptions());
     return sendOk(res, { message: "refreshed", user: userPublic(result.u) });
   } catch (e) {
-    console.error("REFRESH ERROR:", e?.name, e?.message);
-    console.error("sqlMessage:", e?.parent?.sqlMessage);
-    console.error("code:", e?.parent?.code, "errno:", e?.parent?.errno);
     const http = e?._http ?? 500;
     const code = e?._code ?? "INTERNAL_SERVER_ERROR";
-    const msg =
-      http === 500 ? "failed to refresh token" : "invalid refresh token";
+    const msg = http === 500 ? "failed to refresh token" : "invalid refresh token";
     return sendError(res, http, code, msg);
   }
 });
 
 /**
  * POST /api/auth/logout
- * - refresh token revoke + 쿠키 제거
- */
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     tags: [Auth]
- *     summary: Logout (revoke refresh + clear cookies)
- *     responses:
- *       200:
- *         description: ok
- *         content:
- *           application/json:
- *             schema: { $ref: "#/components/schemas/OkResponse" }
  */
 router.post("/logout", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -321,8 +203,9 @@ router.post("/logout", async (req, res) => {
       );
     }
 
+    // ✅ path 통일(대부분 "/"가 안전)
     res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });
 
     return sendOk(res, { message: "logout ok" });
   } catch (e) {
@@ -330,6 +213,5 @@ router.post("/logout", async (req, res) => {
     return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to logout");
   }
 });
-
 
 export default router;

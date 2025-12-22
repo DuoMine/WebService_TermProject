@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { requireAuth, requireAdmin } from "../middlewares/requireAuth.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated } from "../utils/http.js";
 import { models } from "../models/index.js";
 import { Op } from "sequelize";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = Router();
-
 const { User } = models;
 
 function userPublic(u) {
@@ -84,7 +83,7 @@ function userPublic(u) {
  *                       $ref: "#/components/schemas/User"
  *               required: [ok, data]
  *       400:
- *         description: INVALID_NAME
+ *         description: VALIDATION_FAILED
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -132,24 +131,25 @@ router
   .route("/me")
   .get(requireAuth, async (req, res) => {
     const userId = req.auth?.userId;
-    if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+    if (!userId) return sendError(res, "UNAUTHORIZED", "missing auth");
 
     const u = await User.findOne({ where: { id: userId } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
+
     return sendOk(res, { user: userPublic(u) });
   })
   .patch(requireAuth, async (req, res) => {
     const userId = req.auth?.userId;
-    if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+    if (!userId) return sendError(res, "UNAUTHORIZED", "missing auth");
 
     const { name } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, 400, "INVALID_NAME", "name must be at least 2 chars");
+      return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
     }
 
     const u = await User.findOne({ where: { id: userId } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
 
     u.name = name.trim();
     await u.save();
@@ -158,10 +158,10 @@ router
   })
   .delete(requireAuth, async (req, res) => {
     const userId = req.auth?.userId;
-    if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+    if (!userId) return sendError(res, "UNAUTHORIZED", "missing auth");
 
     const u = await User.findOne({ where: { id: userId } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
 
     u.status = "DELETED";
     await u.save();
@@ -204,7 +204,7 @@ router
  *                       $ref: "#/components/schemas/User"
  *               required: [ok, data]
  *       400:
- *         description: INVALID_EMAIL / INVALID_NAME
+ *         description: VALIDATION_FAILED
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -214,12 +214,12 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: Forbidden (not admin)
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       409:
- *         description: EMAIL_EXISTS
+ *         description: DUPLICATE_RESOURCE
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -278,7 +278,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: Forbidden (not admin)
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -289,15 +289,15 @@ router
     const { email, name, role } = req.body;
 
     if (!email || typeof email !== "string") {
-      return sendError(res, 400, "INVALID_EMAIL", "email required");
+      return sendError(res, "VALIDATION_FAILED", "email required");
     }
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, 400, "INVALID_NAME", "name must be at least 2 chars");
+      return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
     }
 
     const exists = await User.findOne({ where: { email } });
     if (exists) {
-      return sendError(res, 409, "EMAIL_EXISTS", "email already exists");
+      return sendError(res, "DUPLICATE_RESOURCE", "email already exists");
     }
 
     const u = await User.create({
@@ -307,7 +307,7 @@ router
       status: "ACTIVE",
     });
 
-    return sendOk(res, { user: userPublic(u) }, 201);
+    return sendCreated(res, { user: userPublic(u) });
   })
   .get(requireAuth, requireAdmin, async (req, res) => {
     // 1) pagination (1-base)
@@ -350,12 +350,7 @@ router
 
     // 5) response: 과제 포맷 그대로(래핑 없이)
     return res.status(200).json(
-      toPageResult(
-        { rows: result.rows.map(userPublic), count: result.count },
-        page,
-        size,
-        sort
-      )
+      toPageResult({ rows: result.rows.map(userPublic), count: result.count }, page, size, sort)
     );
   });
 
@@ -392,7 +387,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: Forbidden (not admin)
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -446,7 +441,7 @@ router
  *                       $ref: "#/components/schemas/User"
  *               required: [ok, data]
  *       400:
- *         description: INVALID_NAME / INVALID_ROLE / INVALID_STATUS
+ *         description: VALIDATION_FAILED
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -456,7 +451,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: Forbidden (not admin)
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -495,7 +490,7 @@ router
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       403:
- *         description: Forbidden (not admin)
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -511,7 +506,7 @@ router
     const { id } = req.params;
 
     const u = await User.findOne({ where: { id } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
 
     return sendOk(res, { user: userPublic(u) });
   })
@@ -520,25 +515,25 @@ router
     const { name, role, status } = req.body;
 
     const u = await User.findOne({ where: { id } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
 
     if (name !== undefined) {
       if (typeof name !== "string" || name.trim().length < 2) {
-        return sendError(res, 400, "INVALID_NAME", "name must be at least 2 chars");
+        return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
       }
       u.name = name.trim();
     }
 
     if (role !== undefined) {
       if (!["USER", "ADMIN"].includes(role)) {
-        return sendError(res, 400, "INVALID_ROLE", "invalid role");
+        return sendError(res, "VALIDATION_FAILED", "invalid role");
       }
       u.role = role;
     }
 
     if (status !== undefined) {
       if (!["ACTIVE", "SUSPENDED", "DELETED"].includes(status)) {
-        return sendError(res, 400, "INVALID_STATUS", "invalid status");
+        return sendError(res, "VALIDATION_FAILED", "invalid status");
       }
       u.status = status;
     }
@@ -550,7 +545,7 @@ router
     const { id } = req.params;
 
     const u = await User.findOne({ where: { id } });
-    if (!u) return sendError(res, 404, "USER_NOT_FOUND", "user not found");
+    if (!u) return sendError(res, "USER_NOT_FOUND", "user not found");
 
     u.status = "DELETED";
     await u.save();

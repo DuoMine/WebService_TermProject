@@ -1,9 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import qs from "qs";
-import jwt from "jsonwebtoken";
-import { sequelize } from "../models/index.js";
-import { models } from "../models/index.js";
+import { sequelize, models } from "../models/index.js";
 import { firebaseAdmin } from "../config/firebaseAdmin.js";
 import {
   signAccessToken,
@@ -140,26 +138,36 @@ async function loginOrSignupWithProvider({ provider, providerUid, email, nicknam
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/OkResponse" }
+ *       400:
+ *         description: idToken required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
  *         description: invalid token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: server error
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post("/social/firebase", async (req, res) => {
   const { idToken } = req.body ?? {};
-  if (!idToken) return sendError(res, 400, "BAD_REQUEST", "idToken required");
+  if (!idToken) return sendError(res, "BAD_REQUEST", "idToken required");
 
   let decoded;
   try {
     decoded = await firebaseAdmin.auth().verifyIdToken(idToken);
   } catch {
-    return sendError(res, 401, "UNAUTHORIZED", "invalid firebase token");
+    return sendError(res, "UNAUTHORIZED", "invalid firebase token");
   }
 
   // Firebase의 고유 식별자
   const providerUid = decoded.uid ? String(decoded.uid) : null;
-  if (!providerUid) return sendError(res, 401, "UNAUTHORIZED", "firebase uid missing");
+  if (!providerUid) return sendError(res, "UNAUTHORIZED", "firebase uid missing");
 
   const email = decoded.email ?? null;
   const nickname = decoded.name ?? null;
@@ -173,7 +181,11 @@ router.post("/social/firebase", async (req, res) => {
       nickname,
     });
   } catch (e) {
-    return sendError(res, 500, "SERVER_ERROR", `firebase social login error: ${String(e?.message ?? e)}`);
+    return sendError(
+      res,
+      "INTERNAL_SERVER_ERROR",
+      `firebase social login error: ${String(e?.message ?? e)}`
+    );
   }
 
   await issueCookiesAndPersistRefresh(res, user);
@@ -196,13 +208,18 @@ router.post("/social/firebase", async (req, res) => {
  *     responses:
  *       302:
  *         description: Redirect to Kakao authorize URL
+ *       500:
+ *         description: server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get("/social/kakao/start", (req, res) => {
   const KAKAO_REST_KEY = process.env.KAKAO_REST_KEY;
   const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI;
 
   if (!KAKAO_REST_KEY || !KAKAO_REDIRECT_URI) {
-    return sendError(res, 500, "SERVER_ERROR", "kakao env missing");
+    return sendError(res, "INTERNAL_SERVER_ERROR", "kakao env missing");
   }
 
   const state = crypto.randomBytes(16).toString("hex");
@@ -212,8 +229,6 @@ router.get("/social/kakao/start", (req, res) => {
     secure: process.env.NODE_ENV === "production",
     maxAge: 5 * 60 * 1000,
   });
-
-  //const scope = ["profile_nickname"].join(",");
 
   const url =
     "https://kauth.kakao.com/oauth/authorize" +
@@ -247,13 +262,28 @@ router.get("/social/kakao/start", (req, res) => {
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: kakao auth failed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       503:
+ *         description: kakao api unavailable
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get("/social/kakao/callback", async (req, res) => {
   const { code, state } = req.query ?? {};
   const savedState = req.cookies?.kakao_oauth_state;
 
   if (!code || !state || !savedState || state !== savedState) {
-    return sendError(res, 400, "BAD_REQUEST", "invalid oauth state");
+    return sendError(res, "BAD_REQUEST", "invalid oauth state");
   }
   res.clearCookie("kakao_oauth_state");
 
@@ -262,7 +292,7 @@ router.get("/social/kakao/callback", async (req, res) => {
   const FRONTEND_URL = process.env.FRONTEND_URL;
 
   if (!KAKAO_REST_KEY || !KAKAO_REDIRECT_URI || !FRONTEND_URL) {
-    return sendError(res, 500, "SERVER_ERROR", "kakao env missing");
+    return sendError(res, "INTERNAL_SERVER_ERROR", "kakao env missing");
   }
 
   // 1) code -> token
@@ -281,15 +311,19 @@ router.get("/social/kakao/callback", async (req, res) => {
 
     if (!tokenResp.ok) {
       const t = await tokenResp.text();
-      return sendError(res, 401, "UNAUTHORIZED", `kakao token failed: ${t}`);
+      return sendError(res, "UNAUTHORIZED", `kakao token failed: ${t}`);
     }
     tokenJson = await tokenResp.json();
   } catch (e) {
-    return sendError(res, 502, "BAD_GATEWAY", `kakao token fetch error: ${String(e?.message ?? e)}`);
+    return sendError(
+      res,
+      "SERVICE_UNAVAILABLE",
+      `kakao token fetch error: ${String(e?.message ?? e)}`
+    );
   }
 
   const kakaoAccessToken = tokenJson?.access_token;
-  if (!kakaoAccessToken) return sendError(res, 401, "UNAUTHORIZED", "kakao access_token missing");
+  if (!kakaoAccessToken) return sendError(res, "UNAUTHORIZED", "kakao access_token missing");
 
   // 2) user/me
   let me;
@@ -300,15 +334,15 @@ router.get("/social/kakao/callback", async (req, res) => {
 
     if (!meResp.ok) {
       const t = await meResp.text();
-      return sendError(res, 401, "UNAUTHORIZED", `kakao me failed: ${t}`);
+      return sendError(res, "UNAUTHORIZED", `kakao me failed: ${t}`);
     }
     me = await meResp.json();
   } catch (e) {
-    return sendError(res, 502, "BAD_GATEWAY", `kakao me fetch error: ${String(e?.message ?? e)}`);
+    return sendError(res, "SERVICE_UNAVAILABLE", `kakao me fetch error: ${String(e?.message ?? e)}`);
   }
 
   const providerUid = me?.id ? String(me.id) : null;
-  if (!providerUid) return sendError(res, 401, "UNAUTHORIZED", "kakao id missing");
+  if (!providerUid) return sendError(res, "UNAUTHORIZED", "kakao id missing");
 
   const nickname = me?.kakao_account?.profile?.nickname ?? null;
 
@@ -321,7 +355,11 @@ router.get("/social/kakao/callback", async (req, res) => {
       nickname,
     });
   } catch (e) {
-    return sendError(res, 500, "SERVER_ERROR", `kakao social login error: ${String(e?.message ?? e)}`);
+    return sendError(
+      res,
+      "INTERNAL_SERVER_ERROR",
+      `kakao social login error: ${String(e?.message ?? e)}`
+    );
   }
 
   await issueCookiesAndPersistRefresh(res, user);
