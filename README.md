@@ -187,7 +187,7 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 ### 공통 응답 포맷
 
 #### 성공 응답
-+++json
+```json
 {
   "success": true,
   "data": { },
@@ -198,13 +198,13 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
     "totalPages": 8
   }
 }
-+++
+```
 
 - `data`: 실제 응답 데이터
 - `meta`: (목록 조회 시) 페이지네이션 정보, 단건 조회 시 생략 가능
 
 #### 실패 응답
-+++json
+```json
 {
   "success": false,
   "timestamp": "2025-03-05T12:34:56Z",
@@ -216,7 +216,7 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
     "title": "길이는 1~100자여야 합니다."
   }
 }
-+++
+```
 
 | 필드명 | 설명 |
 |------|------|
