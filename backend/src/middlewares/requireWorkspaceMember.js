@@ -9,34 +9,38 @@ import { sendError } from "../utils/http.js";
  */
 export function requireWorkspaceMember({ allowAdmin = true } = {}) {
   return async (req, res, next) => {
-    const userId = req.auth?.userId;
-    const role = req.auth?.role;
-    const workspaceId = Number(req.params.workspaceId ?? req.params.id);
+    try {
+      const userId = req.auth?.userId;
+      const role = req.auth?.role;
 
-    if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
-    if (!workspaceId) return sendError(res, 400, "BAD_REQUEST", "invalid workspaceId");
+      const raw = req.params.workspaceId ?? req.params.id;
+      const workspaceId = Number.parseInt(raw, 10);
 
-    // 전역 ADMIN 우회
-    if (allowAdmin && role === "ADMIN") {
+      if (!userId) return sendError(res, 401, "UNAUTHORIZED", "missing auth");
+      if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
+        return sendError(res, 400, "BAD_REQUEST", "invalid workspaceId");
+      }
+
       const ws = await models.Workspace.findByPk(workspaceId);
-      if (!ws) return sendError(res, 404, "NOT_FOUND", "workspace not found");
+      if (!ws) return sendError(res, 404, "WORKSPACE_NOT_FOUND", "workspace not found");
+
+      // ADMIN 우회
+      if (allowAdmin && role === "ADMIN") {
+        req.workspace = ws;
+        return next();
+      }
+
+      const member = await models.WorkspaceMember.findOne({
+        where: { workspace_id: workspaceId, user_id: userId },
+      });
+
+      if (!member) return sendError(res, 403, "FORBIDDEN", "not a workspace member");
+
       req.workspace = ws;
       return next();
+    } catch (err) {
+      return next(err);
     }
-
-    const ws = await models.Workspace.findByPk(workspaceId);
-    if (!ws) return sendError(res, 404, "NOT_FOUND", "workspace not found");
-
-    const member = await models.WorkspaceMember.findOne({
-      where: { workspace_id: workspaceId, user_id: userId },
-    });
-
-    if (!member) {
-      return sendError(res, 403, "FORBIDDEN", "not a workspace member");
-    }
-
-    req.workspace = ws;
-    return next();
   };
 }
 
