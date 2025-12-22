@@ -324,13 +324,21 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"200 OK\", () => {\r",
-									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"const j = pm.response.json();\r",
+									"\r",
+									"pm.test(\"status 200\", () => pm.response.to.have.status(200));\r",
+									"\r",
+									"pm.test(\"content is array\", () => {\r",
+									"  pm.expect(j).to.have.property(\"content\");\r",
+									"  pm.expect(j.content).to.be.an(\"array\");\r",
 									"});\r",
 									"\r",
-									"const json = pm.response.json();\r",
-									"pm.expect(json.users).to.be.an(\"array\");\r",
-									"pm.expect(json.users.length).to.be.above(0);\r",
+									"pm.test(\"pagination fields\", () => {\r",
+									"  pm.expect(j).to.have.property(\"page\");\r",
+									"  pm.expect(j).to.have.property(\"size\");\r",
+									"  pm.expect(j).to.have.property(\"totalElements\");\r",
+									"  pm.expect(j).to.have.property(\"totalPages\");\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -741,9 +749,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
-									"const j = pm.response.json();\r",
-									"pm.environment.set(\"workspaceId\", String(j.workspace.id));\r",
+									"pm.test(\"201 created - workspace\", () => {\r",
+									"  pm.response.to.have.status(201);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j).to.have.property(\"workspace\");\r",
+									"  pm.expect(j.workspace).to.have.property(\"id\");\r",
+									"  pm.environment.set(\"workspaceId\", j.workspace.id);\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -964,9 +976,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
-									"const j = pm.response.json();\r",
-									"pm.environment.set(\"projectId\", String(j.project.id));\r",
+									"pm.test(\"201 created - project\", () => {\r",
+									"  pm.response.to.have.status(201);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j).to.have.property(\"project\");\r",
+									"  pm.expect(j.project).to.have.property(\"id\");\r",
+									"  pm.environment.set(\"projectId\", j.project.id);\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1169,9 +1185,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
-									"const j = pm.response.json();\r",
-									"pm.environment.set(\"taskId\", String(j.task.id));\r",
+									"pm.test(\"201 created - task\", () => {\r",
+									"  pm.response.to.have.status(201);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j).to.have.property(\"task\");\r",
+									"  pm.expect(j.task).to.have.property(\"id\");\r",
+									"  pm.environment.set(\"taskId\", j.task.id);\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1350,9 +1370,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
-									"const j = pm.response.json();\r",
-									"pm.environment.set(\"tagId\", String(j.tag.id));\r",
+									"pm.test(\"201 created - tag\", () => {\r",
+									"  pm.response.to.have.status(201);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j).to.have.property(\"tag\");\r",
+									"  pm.expect(j.tag).to.have.property(\"id\");\r",
+									"  pm.environment.set(\"tagId\", j.tag.id);\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1512,7 +1536,11 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"2xx\", ()=> pm.expect(pm.response.code).to.be.within(200,299));"
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
+									"});\r",
+									""
 								],
 								"type": "text/javascript",
 								"packages": {},
@@ -1555,9 +1583,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
-									"const j = pm.response.json();\r",
-									"pm.environment.set(\"commentId\", String(j.comment.id));\r",
+									"pm.test(\"201 created - comment\", () => {\r",
+									"  pm.response.to.have.status(201);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j).to.have.property(\"comment\");\r",
+									"  pm.expect(j.comment).to.have.property(\"id\");\r",
+									"  pm.environment.set(\"commentId\", j.comment.id);\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1689,6 +1721,54 @@
 			"name": "Negative Cases",
 			"item": [
 				{
+					"name": "400 필드 누락",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"400 BAD_REQUEST - missing required field\", () => {\r",
+									"  pm.response.to.have.status(400);\r",
+									"  const j = pm.response.json();\r",
+									"  pm.expect(j.success).to.eql(false);\r",
+									"  pm.expect([\"BAD_REQUEST\"]).to.include(j.code);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "409 tag 중복",
 					"request": {
 						"method": "POST",
@@ -1747,6 +1827,23 @@
 			"item": [
 				{
 					"name": "Delete /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments 댓글 삭제",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
 					"request": {
 						"method": "DELETE",
 						"header": [],
@@ -1798,7 +1895,10 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1828,6 +1928,23 @@
 				},
 				{
 					"name": "Delete /api/workspaces/:workspaceId/members/:memberUserId 워크스페이스에서 멤버 제거",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
 					"request": {
 						"method": "DELETE",
 						"header": [],
@@ -1854,12 +1971,10 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"200 OK\", () => {\r",
-									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
 									"});\r",
-									"\r",
-									"const json = pm.response.json();\r",
-									"pm.expect(json.message).to.eql(\"USER_DELETED\");\r",
 									""
 								],
 								"type": "text/javascript",
@@ -1892,7 +2007,10 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									"pm.test(\"204 no content\", () => {\r",
+									"  pm.response.to.have.status(204);\r",
+									"  pm.expect(pm.response.text()).to.eql(\"\");\r",
+									"});\r",
 									""
 								],
 								"type": "text/javascript",
@@ -2088,7 +2206,8 @@
 				"packages": {},
 				"requests": {},
 				"exec": [
-					"pm.test(\"Response has JSON\", function () {\r",
+					"pm.test(\"Response has JSON when applicable\", function () {\r",
+					"  if (pm.response.code === 204) return;\r",
 					"  pm.response.to.have.header(\"Content-Type\");\r",
 					"});\r",
 					"\r",
