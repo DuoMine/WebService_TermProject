@@ -82,7 +82,7 @@ router.post("/", async (req, res) => {
     assignee_id: assigneeId ?? null,
   });
 
-  return sendOk(res, { task });
+  return sendOk(res, { task }, 201);
 });
 
 // GET /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId

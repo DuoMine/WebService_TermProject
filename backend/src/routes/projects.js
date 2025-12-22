@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
     created_by: userId,
   });
 
-  return sendOk(res, { project: p });
+  return sendOk(res, { project: p }, 201);
 });
 
 // GET /api/workspaces/:workspaceId/projects/:projectId

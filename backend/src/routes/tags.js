@@ -79,9 +79,25 @@ router.post("/tags", async (req, res) => {
 
   try {
     const tag = await models.Tag.create({ workspace_id: workspaceId, name });
-    return sendOk(res, { tag });
+    return sendOk(res, { tag }, 201);
   } catch (e) {
-    return sendError(res, 409, "CONFLICT", "tag already exists");
+    // ✅ 진짜 원인 로깅 (마감 전까지는 꼭 켜둬)
+    console.error("[POST /tags] create failed:", e?.name, e?.message, e?.original?.code, e?.original?.errno);
+
+    // ✅ 유니크 충돌만 409
+    if (e?.name === "SequelizeUniqueConstraintError") {
+      return sendError(res, 409, "CONFLICT", "tag already exists");
+    }
+
+    // ✅ FK/validation 등은 400/500로 분리
+    if (e?.name === "SequelizeForeignKeyConstraintError") {
+      return sendError(res, 400, "BAD_REQUEST", "invalid workspace_id");
+    }
+    if (e?.name === "SequelizeValidationError") {
+      return sendError(res, 400, "BAD_REQUEST", "invalid tag data");
+    }
+
+    return sendError(res, 500, "INTERNAL_ERROR", "failed to create tag");
   }
 });
 

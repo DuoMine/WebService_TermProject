@@ -31,7 +31,7 @@ router.post("/", requireAuth, async (req, res) => {
     );
 
     await t.commit();
-    return sendOk(res, { workspace: ws });
+    return sendOk(res, { workspace: ws }, 201);
   } catch (e) {
     await t.rollback();
     return sendError(res, 500, "INTERNAL_ERROR", e.message);
@@ -50,6 +50,7 @@ router.get("/", requireAuth, async (req, res) => {
     include: [
       {
         model: models.WorkspaceMember,
+        as: "members",
         where: { user_id: userId },
         attributes: [],
       },
@@ -102,7 +103,7 @@ router.get("/:workspaceId/members", async (req, res) => {
 
   const members = await models.WorkspaceMember.findAll({
     where: { workspace_id: workspaceId },
-    include: [{ model: models.User, attributes: ["id", "email", "name", "role", "status"] }],
+    include: [{ model: models.User, as: "user", attributes: ["id", "email", "name", "role", "status"] }],
     order: [["created_at", "ASC"]],
   });
 

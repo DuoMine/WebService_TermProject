@@ -12,6 +12,7 @@ export function defineTag(sequelize) {
     {
       tableName: "tags",
       indexes: [{ unique: true, fields: ["workspace_id", "name"] }, { fields: ["workspace_id"] }],
+      timestamps: false,
     }
   );
   return Tag;

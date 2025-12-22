@@ -79,7 +79,7 @@ router.post("/", async (req, res) => {
     content,
   });
 
-  return sendOk(res, { comment: c });
+  return sendOk(res, { comment: c }, 201);
 });
 
 // PATCH /api/.../comments/:commentId

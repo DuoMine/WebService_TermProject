@@ -101,7 +101,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     status: "ACTIVE",
   });
 
-  return sendOk(res, { user: userPublic(u) });
+  return sendOk(res, { user: userPublic(u) }, 201);
 });
 
 /**
