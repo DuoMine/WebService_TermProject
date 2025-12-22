@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireAdmin } from "../middlewares/requireAuth.js";
-import { sendOk, sendError, sendCreated } from "../utils/http.js";
+import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { models } from "../models/index.js";
 import { Op } from "sequelize";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";

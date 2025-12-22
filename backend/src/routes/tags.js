@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError, sendCreated } from "../utils/http.js";
+import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -222,7 +222,7 @@ router
 
     try {
       const tag = await models.Tag.create({ workspace_id: workspaceId, name });
-      return sendCreated(res, { tag });
+      return sendCreated(res, { tag: tag });
     } catch (e) {
       console.error(
         "[POST /tags] create failed:",

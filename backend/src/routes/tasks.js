@@ -2,7 +2,7 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models } from "../models/index.js";
-import { sendOk, sendError, sendCreated } from "../utils/http.js";
+import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
 const router = express.Router({ mergeParams: true });
@@ -271,7 +271,7 @@ router
       assignee_id: assigneeId ?? null,
     });
 
-    return sendCreated(res, { task });
+    return sendCreated(res, { task: task });
   });
 
 /**
@@ -438,7 +438,7 @@ router
     });
     if (!task) return sendError(res, "RESOURCE_NOT_FOUND", "task not found");
 
-    return sendOk(res, { task });
+    return sendOk(res, { task: task });
   })
   .patch(async (req, res) => {
     const project = await loadProjectOr404(req, res);
@@ -470,7 +470,7 @@ router
     if (assigneeId !== undefined) task.assignee_id = assigneeId;
 
     await task.save();
-    return sendOk(res, { task });
+    return sendOk(res, { task: task });
   })
   .delete(async (req, res) => {
     const project = await loadProjectOr404(req, res);

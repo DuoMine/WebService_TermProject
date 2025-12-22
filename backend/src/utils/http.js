@@ -1,14 +1,12 @@
 // src/utils/http.js
 import { ERROR, assertKnownErrorCode } from "./errorCodes.js";
 
-export function sendOk(res, data = {}, meta) {
-  const body = { success: true, data };
-  if (meta !== undefined) body.meta = meta;
-  return res.status(200).json(body);
+export function sendOk(res, data = {}) {
+  return res.status(200).json(data);
 }
 
 export function sendCreated(res, data = {}) {
-  return res.status(201).json({ success: true, data });
+  return res.status(201).json(data);
 }
 
 export function sendNoContent(res) {

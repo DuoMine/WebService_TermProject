@@ -3,7 +3,7 @@ import express from "express";
 import { Op } from "sequelize";
 import { models, sequelize } from "../models/index.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
-import { sendOk, sendError } from "../utils/http.js";
+import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { requireWorkspaceOwner } from "../middlewares/requireWorkspaceMember.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";
 
@@ -55,7 +55,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -113,7 +113,7 @@ const router = express.Router();
  *                 sort: { type: string, example: "created_at,DESC" }
  *               required: [content, page, size, totalElements, totalPages]
  *       401:
- *         description: UNAUTHORIZED
+ *         description: FORBIDDEN
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -121,30 +121,30 @@ const router = express.Router();
 router
   .route("/")
   .post(requireAuth, async (req, res) => {
-    const userId = req.auth.userId;
-    const { name, description } = req.body;
+  const userId = req.auth.userId;
+  const { name, description } = req.body;
+  if (!name) return sendError(res, "BAD_REQUEST", "name required");
 
-    if (!name) return sendError(res, "BAD_REQUEST", "name required");
-
-    const t = await sequelize.transaction();
-    try {
-      const ws = await models.Workspace.create(
+  try {
+    const ws = await sequelize.transaction(async (t) => {
+      const created = await models.Workspace.create(
         { name, description: description ?? null, owner_id: userId },
         { transaction: t }
       );
-
       await models.WorkspaceMember.create(
-        { workspace_id: ws.id, user_id: userId },
+        { workspace_id: created.id, user_id: userId },
         { transaction: t }
       );
+      return created;
+    });
 
-      await t.commit();
-      return sendCreated(res, { workspace: ws });
-    } catch (e) {
-      await t.rollback();
-      return sendError(res, "INTERNAL_SERVER_ERROR", "internal server error");
-    }
-  })
+    return sendCreated(res, { workspace: ws });
+  } catch (e) {
+    console.error("[POST /workspaces] error:", e);
+    try { await t.rollback(); } catch (re) { console.error("rollback error:", re); }
+    return sendError(res, "INTERNAL_SERVER_ERROR", "internal server error");
+  }
+})
   .get(requireAuth, async (req, res) => {
     const userId = req.auth.userId;
 
@@ -189,7 +189,6 @@ router
       distinct: true, // include로 count 중복 방지
     });
 
-    // ✅ 5) 과제 포맷 그대로(래핑 없이)
     return sendOk(res, toPageResult(result, page, size, sort));
   });
 
@@ -474,7 +473,6 @@ router
       distinct: true,
     });
 
-    // ✅ 4) 과제 포맷(래핑 없이)
     return sendOk(res, toPageResult(result, page, size, sort));
   })
   .post(requireWorkspaceOwner(), async (req, res) => {
@@ -493,7 +491,7 @@ router
     if (existed) return sendError(res, "DUPLICATE_RESOURCE", "already member");
 
     await models.WorkspaceMember.create({ workspace_id: workspaceId, user_id: userId });
-    return sendOk(res);
+    return sendOk(res, { workspace: req.workspace });
   });
 
 /**
