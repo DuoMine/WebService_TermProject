@@ -50,12 +50,12 @@ router.post("/signup", async (req, res) => {
   if (!isNonEmptyString(name, 60)) details.name = "name must be 1~60 chars";
 
   if (Object.keys(details).length) {
-    return sendError(res, 422, "VALIDATION_FAILED", "validation failed", details);
+    return sendError(res, "VALIDATION_FAILED", "validation failed", details);
   }
 
   try {
     const exists = await User.findOne({ where: { email } });
-    if (exists) return sendError(res, 409, "DUPLICATE_RESOURCE", "email already exists");
+    if (exists) return sendError(res, "DUPLICATE_RESOURCE", "email already exists");
 
     const password_hash = await bcrypt.hash(password, 10);
     const u = await User.create({
@@ -70,7 +70,7 @@ router.post("/signup", async (req, res) => {
     return sendCreated(res, { message: "signup ok", user: userPublic(u) });
   } catch (e) {
     console.error("POST /api/auth/signup error:", e);
-    return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to signup");
+    return sendError(res, "INTERNAL_SERVER_ERROR", "failed to signup");
   }
 });
 
@@ -85,17 +85,17 @@ router.post("/login", async (req, res) => {
   if (typeof password !== "string") details.password = "password is required";
 
   if (Object.keys(details).length) {
-    return sendError(res, 422, "VALIDATION_FAILED", "validation failed", details);
+    return sendError(res, "VALIDATION_FAILED", "validation failed", details);
   }
 
   try {
     const u = await User.findOne({ where: { email } });
-    if (!u) return sendError(res, 401, "UNAUTHORIZED", "invalid credentials");
-    if (u.status !== "ACTIVE") return sendError(res, 403, "FORBIDDEN", "user not active");
-    if (!u.password_hash) return sendError(res, 401, "UNAUTHORIZED", "password login not available");
+    if (!u) return sendError(res, "UNAUTHORIZED", "invalid credentials");
+    if (u.status !== "ACTIVE") return sendError(res, "FORBIDDEN", "user not active");
+    if (!u.password_hash) return sendError(res, "UNAUTHORIZED", "password login not available");
 
     const ok = await bcrypt.compare(password, u.password_hash);
-    if (!ok) return sendError(res, 401, "UNAUTHORIZED", "invalid credentials");
+    if (!ok) return sendError(res, "UNAUTHORIZED", "invalid credentials");
 
     const access = signAccessToken({ sub: String(u.id), role: u.role });
     const refresh = signRefreshToken({ sub: String(u.id), role: u.role });
@@ -114,7 +114,7 @@ router.post("/login", async (req, res) => {
     return sendOk(res, { message: "login ok", user: userPublic(u) });
   } catch (e) {
     console.error("POST /api/auth/login error:", e);
-    return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to login");
+    return sendError(res, "INTERNAL_SERVER_ERROR", "failed to login");
   }
 });
 
@@ -123,7 +123,7 @@ router.post("/login", async (req, res) => {
  */
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
-  if (!token) return sendError(res, 401, "UNAUTHORIZED", "missing refresh token");
+  if (!token) return sendError(res, "UNAUTHORIZED", "missing refresh token");
 
   let payload;
   try {
@@ -131,11 +131,11 @@ router.post("/refresh", async (req, res) => {
   } catch (e) {
     const code = e?.name === "TokenExpiredError" ? "TOKEN_EXPIRED" : "UNAUTHORIZED";
     const msg = e?.name === "TokenExpiredError" ? "refresh token expired" : "invalid refresh token";
-    return sendError(res, 401, code, msg);
+    return sendError(res, code, msg);
   }
 
   const userId = parseInt(payload.sub, 10);
-  if (!userId) return sendError(res, 401, "UNAUTHORIZED", "invalid refresh token");
+  if (!userId) return sendError(res, "UNAUTHORIZED", "invalid refresh token");
 
   const oldHash = hashToken(token);
 
@@ -181,10 +181,15 @@ router.post("/refresh", async (req, res) => {
     res.cookie(REFRESH_COOKIE_NAME, result.newRefresh, getRefreshCookieOptions());
     return sendOk(res, { message: "refreshed", user: userPublic(result.u) });
   } catch (e) {
-    const http = e?._http ?? 500;
     const code = e?._code ?? "INTERNAL_SERVER_ERROR";
-    const msg = http === 500 ? "failed to refresh token" : "invalid refresh token";
-    return sendError(res, http, code, msg);
+
+    const msgMap = {
+      TOKEN_EXPIRED: "refresh token expired",
+      UNAUTHORIZED: "invalid refresh token",
+      INTERNAL_SERVER_ERROR: "failed to refresh token",
+    };
+
+    return sendError(res, code, msgMap[code] ?? "failed to refresh token");
   }
 });
 
@@ -210,7 +215,7 @@ router.post("/logout", async (req, res) => {
     return sendOk(res, { message: "logout ok" });
   } catch (e) {
     console.error("POST /api/auth/logout error:", e);
-    return sendError(res, 500, "INTERNAL_SERVER_ERROR", "failed to logout");
+    return sendError(res, "INTERNAL_SERVER_ERROR", "failed to logout");
   }
 });
 

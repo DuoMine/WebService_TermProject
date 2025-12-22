@@ -19,10 +19,7 @@ export function sendError(res, code, message, details) {
   assertKnownErrorCode(code);
 
   const httpStatus = ERROR[code].status;
-  if (expected !== httpStatus) {
-    throw new Error(`Status mismatch: ${code} expects ${expected}, got ${httpStatus}`);
-  }
-  
+
   const body = {
     success: false,
     timestamp: new Date().toISOString(),

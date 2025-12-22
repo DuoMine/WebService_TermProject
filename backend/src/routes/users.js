@@ -145,7 +145,7 @@ router
     const { name } = req.body;
 
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
+      return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
     }
 
     const u = await User.findOne({ where: { id: userId } });
@@ -289,10 +289,10 @@ router
     const { email, name, role } = req.body;
 
     if (!email || typeof email !== "string") {
-      return sendError(res, "VALIDATION_FAILED", "email required");
+      return sendError(res, "VALIDATION_FAILED", "validation failed", { email: "required" });
     }
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
+      return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
     }
 
     const exists = await User.findOne({ where: { email } });
@@ -518,21 +518,21 @@ router
 
     if (name !== undefined) {
       if (typeof name !== "string" || name.trim().length < 2) {
-        return sendError(res, "VALIDATION_FAILED", "name must be at least 2 chars");
+        return sendError(res, "VALIDATION_FAILED", "validation failed", { name: "must be at least 2 chars" });
       }
       u.name = name.trim();
     }
 
     if (role !== undefined) {
       if (!["USER", "ADMIN"].includes(role)) {
-        return sendError(res, "VALIDATION_FAILED", "invalid role");
+        return sendError(res, "VALIDATION_FAILED", "validation failed", { role: "invalid role"});
       }
       u.role = role;
     }
 
     if (status !== undefined) {
       if (!["ACTIVE", "SUSPENDED", "DELETED"].includes(status)) {
-        return sendError(res, "VALIDATION_FAILED", "invalid status");
+        return sendError(res, "VALIDATION_FAILED", "validation failed", {status: "invalid status"});
       }
       u.status = status;
     }

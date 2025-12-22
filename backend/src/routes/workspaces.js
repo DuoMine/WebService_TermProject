@@ -124,7 +124,7 @@ router
     const userId = req.auth.userId;
     const { name, description } = req.body;
 
-    if (!name) return sendError(res, 400, "BAD_REQUEST", "name required");
+    if (!name) return sendError(res, "BAD_REQUEST", "name required");
 
     const t = await sequelize.transaction();
     try {
@@ -142,7 +142,7 @@ router
       return sendCreated(res, { workspace: ws });
     } catch (e) {
       await t.rollback();
-      return sendError(res, 500, "INTERNAL_SERVER_ERROR", "internal server error");
+      return sendError(res, "INTERNAL_SERVER_ERROR", "internal server error");
     }
   })
   .get(requireAuth, async (req, res) => {
@@ -481,16 +481,16 @@ router
     const workspaceId = req.workspace.id;
     const { userId } = req.body;
 
-    if (!userId) return sendError(res, 400, "BAD_REQUEST", "userId required");
+    if (!userId) return sendError(res, "BAD_REQUEST", "userId required");
 
     if (Number(userId) === req.workspace.owner_id) {
-      return sendError(res, 409, "DUPLICATE_RESOURCE", "owner already member");
+      return sendError(res, "DUPLICATE_RESOURCE", "owner already member");
     }
 
     const existed = await models.WorkspaceMember.findOne({
       where: { workspace_id: workspaceId, user_id: userId },
     });
-    if (existed) return sendError(res, 409, "DUPLICATE_RESOURCE", "already member");
+    if (existed) return sendError(res, "DUPLICATE_RESOURCE", "already member");
 
     await models.WorkspaceMember.create({ workspace_id: workspaceId, user_id: userId });
     return sendOk(res);
@@ -536,10 +536,10 @@ router.delete("/:workspaceId/members/:userId", requireWorkspaceOwner(), async (r
   const workspaceId = req.workspace.id;
   const userId = Number(req.params.userId);
 
-  if (!userId) return sendError(res, 400, "BAD_REQUEST", "invalid userId");
+  if (!userId) return sendError(res, "BAD_REQUEST", "invalid userId");
 
   if (userId === req.workspace.owner_id) {
-    return sendError(res, 400, "BAD_REQUEST", "cannot remove owner");
+    return sendError(res, "BAD_REQUEST", "cannot remove owner");
   }
 
   await models.WorkspaceMember.destroy({
