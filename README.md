@@ -164,43 +164,91 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 
 ---
 
-## 10) 에러 응답 공통 포맷
+## 10) 공통 응답 포맷 및 응답 코드 정의
 
-```json
+### 공통 응답 포맷
+
+#### 성공 응답
++++json
 {
+  "success": true,
+  "data": { },
+  "meta": {
+    "page": 0,
+    "size": 20,
+    "totalElements": 153,
+    "totalPages": 8
+  }
+}
++++
+
+- `data`: 실제 응답 데이터
+- `meta`: (목록 조회 시) 페이지네이션 정보, 단건 조회 시 생략 가능
+
+#### 실패 응답
++++json
+{
+  "success": false,
   "timestamp": "2025-03-05T12:34:56Z",
   "path": "/api/posts/1",
   "status": 400,
-  "code": "POST_TITLE_TOO_LONG",
-  "message": "게시글 제목은 1~100자 이내여야 합니다.",
+  "code": "VALIDATION_FAILED",
+  "message": "요청 값이 올바르지 않습니다.",
   "details": {
-    "title": "현재 길이 150자"
+    "title": "길이는 1~100자여야 합니다."
   }
 }
-```
++++
+
+| 필드명 | 설명 |
+|------|------|
+| success | 성공 여부 |
+| timestamp | 에러 발생 시각 (ISO 8601) |
+| path | 요청 경로 |
+| status | HTTP 상태 코드 |
+| code | 시스템 내부 응답 코드 |
+| message | 사용자에게 전달할 메시지 |
+| details | (선택) 필드별 상세 오류 정보 |
 
 ---
 
-## 11) 표준 에러 코드 정의
+### HTTP 응답 코드 정의 (성공 + 실패)
 
-| HTTP | Code | 설명 |
-|------|------|------|
-| 400 | BAD_REQUEST | 잘못된 요청 |
-| 400 | VALIDATION_FAILED | 입력 검증 실패 |
-| 401 | UNAUTHORIZED | 인증 실패 |
+| HTTP 코드 | 코드 | 설명 |
+|----------|------|------|
+| **200** | OK | 조회/수정 성공 |
+| **201** | CREATED | 리소스 생성 성공 |
+| **204** | NO_CONTENT | 삭제 성공 (응답 본문 없음) |
+| **400** | BAD_REQUEST | 요청 형식이 올바르지 않음 |
+| 400 | VALIDATION_FAILED | 입력 값 검증 실패 |
+| 400 | INVALID_QUERY_PARAM | 잘못된 쿼리 파라미터 |
+| **401** | UNAUTHORIZED | 인증 토큰 없음 또는 잘못된 토큰 |
 | 401 | TOKEN_EXPIRED | 토큰 만료 |
-| 403 | FORBIDDEN | 권한 없음 |
-| 404 | RESOURCE_NOT_FOUND | 리소스 없음 |
-| 409 | DUPLICATE_RESOURCE | 중복 데이터 |
-| 422 | UNPROCESSABLE_ENTITY | 논리적 오류 |
-| 429 | TOO_MANY_REQUESTS | Rate Limit |
-| 500 | INTERNAL_SERVER_ERROR | 서버 오류 |
-| 500 | DATABASE_ERROR | DB 오류 |
-| 500 | UNKNOWN_ERROR | 알 수 없는 오류 |
+| **403** | FORBIDDEN | 접근 권한 없음 |
+| **404** | RESOURCE_NOT_FOUND | 리소스를 찾을 수 없음 |
+| 404 | USER_NOT_FOUND | 사용자 ID 없음 |
+| **409** | DUPLICATE_RESOURCE | 중복 데이터 존재 |
+| 409 | STATE_CONFLICT | 리소스 상태 충돌 |
+| **422** | UNPROCESSABLE_ENTITY | 논리적으로 처리 불가한 요청 |
+| **429** | TOO_MANY_REQUESTS | 요청 한도 초과 (Rate Limit) |
+| **500** | INTERNAL_SERVER_ERROR | 서버 내부 오류 |
+| 500 | DATABASE_ERROR | 데이터베이스 처리 오류 |
+| **503** | SERVICE_UNAVAILABLE | 외부 서비스 또는 인프라 장애 (DB/Redis 등) |
 
 ---
 
-## 12) 성능 / 보안 고려사항
+### 응답 처리 규칙
+
+1. 모든 API는 성공/실패 여부를 `success` 필드로 명확히 구분한다.
+2. 모든 실패 응답은 위 실패 응답 포맷을 따른다.
+3. Validation 실패 시 필드별 오류를 `details` 객체로 포함한다.
+4. Swagger 문서의 각 엔드포인트에는 최소 다음 응답을 명시한다.
+   - 200 / 201 / 204
+   - 400 / 401 / 403 / 404 / 422 / 500 / 503
+5. Postman Collection에는 대표적인 성공/실패 케이스 검증 요청을 포함한다.
+---
+
+## 11) 성능 / 보안 고려사항
 - bcrypt 기반 비밀번호 해시
 - Redis 기반 Refresh Token 관리
 - 전역 Rate Limit 적용
@@ -210,7 +258,7 @@ mysql -h 127.0.0.1 -P 3306 -u root -prootpw term_project
 
 ---
 
-## 13) 한계와 개선 계획
+## 12) 한계와 개선 계획
 - 알림(Notification) 기능 추가
 - 파일 업로드(S3) 연동
 - 통계/대시보드 API 확장
