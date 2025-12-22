@@ -1,0 +1,2116 @@
+{
+	"info": {
+		"_postman_id": "4eccae00-a708-4e0f-9e9f-27db3267d17a",
+		"name": "WebService_Term",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "49596807",
+		"_collection_link": "https://kindkim02-4599655.postman.co/workspace/DuoMine's-Team's-Workspace~7e1a5fc5-f0f9-45fd-8d2b-a3dcca76b6ff/collection/49596807-4eccae00-a708-4e0f-9e9f-27db3267d17a?action=share&source=collection_link&creator=49596807"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/health",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth Flow",
+			"item": [
+				{
+					"name": "Post /api/auth/signup 회원가입",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Signup: 201 or 409\", () =>   pm.expect(pm.response.code).to.be.oneOf([201, 409]));\r",
+									"const json = pm.response.json();\r",
+									"pm.test(\"Signup: returns user when created\", () => {\r",
+									"  if (pm.response.code === 201 || pm.response.code === 200) {\r",
+									"    pm.expect(json).to.have.property(\"user\");\r",
+									"  }\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"{{EMAIL}}\",\r\n  \"password\": \"{{PASSWORD}}\",\r\n  \"name\": \"user1\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/signup",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/auth/login 로그인",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									"pm.test(\"Login: cookie issued (manual check in Cookies)\", () => true);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"email\": \"{{EMAIL}}\", \"password\": \"{{PASSWORD}}\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/auth/refresh 토큰 리프레시",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Refresh: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/refresh",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/auth/logout 로그아웃",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Logout: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/logout",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users Admin",
+			"item": [
+				{
+					"name": "Post /api/auth/login 로그인(Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									"pm.test(\"Login: cookie issued (manual check in Cookies)\", () => true);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"email\": \"{{ADMINEMAIL}}\", \"password\": \"{{ADMINPASSWORD}}\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/users 어드민 권한 유저 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 or 201\", () => {\r",
+									"  pm.expect([200, 201]).to.include(pm.response.code);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"const id = json?.user?.id;\r",
+									"\r",
+									"pm.test(\"created user id exists\", () => {\r",
+									"  pm.expect(id).to.exist;\r",
+									"});\r",
+									"\r",
+									"pm.environment.set(\"createdUserId\", String(id));\r",
+									"\r",
+									"// 콘솔/확인용\r",
+									"console.log(\"saved createdUserId =\", pm.environment.get(\"createdUserId\"));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const ts = Date.now();\r",
+									"pm.environment.set(\"TESTEMAIL\", `test_${ts}@test.com`);\r",
+									"pm.environment.set(\"TESTPASSWORD\", \"Test1234!\");"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"{{TESTEMAIL}}\",\r\n    \"name\": \"user1\",\r\n    \"role\": \"USER\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/users",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/users 어드민 권한 모든 유저 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json.users).to.be.an(\"array\");\r",
+									"pm.expect(json.users.length).to.be.above(0);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/users",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/users/:userId 어드민 권한 특정 유저 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json.user.id).to.eql(Number(pm.environment.get(\"createdUserId\")));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/{{createdUserId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{createdUserId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/users/:userId 어드민 권한 특정 유저 정보 수정",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json.user.status).to.eql(\"DELETED\");\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"status\": \"DELETED\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/{{createdUserId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{createdUserId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/auth/logout 로그아웃",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Logout: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/logout",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Users me",
+			"item": [
+				{
+					"name": "Post /api/auth/signup 회원가입",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// signup은 이미 존재해도 통과하도록 (409 허용)\r",
+									"pm.test(\"signup ok or already exists\", () => {\r",
+									"  pm.expect(pm.response.code).to.be.oneOf([200, 201, 409]);\r",
+									"});\r",
+									"\r",
+									"// 성공했을 때만 userId 저장\r",
+									"if (pm.response.code === 200 || pm.response.code === 201) {\r",
+									"  const json = pm.response.json();\r",
+									"  if (json?.user?.id) {\r",
+									"    pm.environment.set(\"createdUserId\", String(json.user.id));\r",
+									"  }\r",
+									"}\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const ts = Date.now();\r",
+									"pm.environment.set(\"TESTEMAIL\", `test2_${ts}@test.com`);\r",
+									"pm.environment.set(\"TESTPASSWORD\", \"Test1234!\");"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"{{TESTEMAIL}}\",\r\n  \"password\": \"{{TESTPASSWORD}}\",\r\n  \"name\": \"user1\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/signup",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/auth/login 로그인",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login: 200\", () => pm.expect(pm.response.code).to.equal(200));\r",
+									"pm.test(\"Login: cookie issued (manual check in Cookies)\", () => true);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"email\": \"{{TESTEMAIL}}\", \"password\": \"{{TESTPASSWORD}}\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/users/me 내 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json).to.have.property(\"user\");\r",
+									"\r",
+									"const user = json.user;\r",
+									"pm.expect(user).to.have.property(\"id\");\r",
+									"pm.expect(user).to.have.property(\"email\");\r",
+									"pm.expect(user).to.have.property(\"name\");\r",
+									"pm.expect(user).to.have.property(\"role\");\r",
+									"\r",
+									"pm.environment.set(\"userId\", String(user.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/me",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/users/me 내 정보 수정",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json.user.name).to.eql(\"patched_user\");\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"patched_user\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/me",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {},
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Workspace Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces 워크스페이스 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
+									"const j = pm.response.json();\r",
+									"pm.environment.set(\"workspaceId\", String(j.workspace.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"ws-{{rand}}\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces 내 워크스페이스",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId 특정 워크스페이스 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/workspaces/:workspaceId 특정 워크스페이스 정보 수정",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"name\": \"ws-{{rand}}-upd\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Members Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces/:workspaceId/members 특정 워크스페이스 멤버 추가",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"2xx\", ()=> pm.expect(pm.response.code).to.be.within(200,299));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"userId\": \"{{memberUserId}}\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/members",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"members"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/members 특정 워크스페이스 멤버 리스트",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/members",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"members"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Projects Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces/:workspaceId/projects 프로젝트 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
+									"const j = pm.response.json();\r",
+									"pm.environment.set(\"projectId\", String(j.project.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"name\": \"proj-{{rand}}\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects 워크스페이스 프로젝트",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects/:projectId 특정 프로젝트 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/workspaces/:workspaceId/projects/:projectId 특정 프로젝트 정보 수정",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"name\": \"proj-{{rand}}-upd\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "401 로그인 실패 (wrong password)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login wrong pw: 401\", () => pm.expect(pm.response.code).to.equal(401));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"email\": \"{{EMAIL}}\", \"password\": \"wrong_password\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tasks Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces/:workspaceId/projects/:projectId/tasks 태스크 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
+									"const j = pm.response.json();\r",
+									"pm.environment.set(\"taskId\", String(j.task.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"title\": \"task-{{rand}}\", \"status\": \"TODO\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects/:projectId/tasks 프로젝트 태스크",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks?page=1&limit=10",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId 특정 태스크 정보",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId 특정 태스크 정보 수정",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"status\": \"DOING\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tags Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces/:workspaceId/tags 태그 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
+									"const j = pm.response.json();\r",
+									"pm.environment.set(\"tagId\", String(j.tag.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"name\": \"232tag-12{{rand}}\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/tags 모든 태그 리스트",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/tags/:tagId 태스크에 태그 부착",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"2xx\", ()=> pm.expect(pm.response.code).to.be.within(200,299));"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"tagId\": {{tagId}} }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/tags 태스크의 태그 리스트",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"2xx\", ()=> pm.expect(pm.response.code).to.be.within(200,299));"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/tags/:tagId 태스크에서 태그 제거",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"2xx\", ()=> pm.expect(pm.response.code).to.be.within(200,299));"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/tags/{{tagId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"tags",
+								"{{tagId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Comments Flow",
+			"item": [
+				{
+					"name": "Post /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments 댓글 생성",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"201\", ()=> pm.expect(pm.response.code).to.equal(201));\r",
+									"const j = pm.response.json();\r",
+									"pm.environment.set(\"commentId\", String(j.comment.id));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"content\": \"hello-{{rand}}\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/comments",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments 태스크 댓글 조회",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/comments",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments 특정 댓글 정보 수정",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"content\": \"upd-{{rand}}\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/comments/{{commentId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"comments",
+								"{{commentId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Negative Cases",
+			"item": [
+				{
+					"name": "409 tag 중복",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"name\": \"tag-{{rand}}\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/tags",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "404 task 없음",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Delete /api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments 댓글 삭제",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}/tasks/{{taskId}}/comments/{{commentId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}",
+								"tasks",
+								"{{taskId}}",
+								"comments",
+								"{{commentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/workspaces/:workspaceId/tags 태그 삭제",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/tags/{{tagId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"tags",
+								"{{tagId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/workspaces/:workspaceId/projects/:projectId 프로젝트 삭제",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/projects/{{projectId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"projects",
+								"{{projectId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/workspaces/:workspaceId/members/:memberUserId 워크스페이스에서 멤버 제거",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}/members/{{memberUserId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}",
+								"members",
+								"{{memberUserId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/auth/users/me 회원 탈퇴",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200 OK\", () => {\r",
+									"  pm.expect(pm.response.code).to.eql(200);\r",
+									"});\r",
+									"\r",
+									"const json = pm.response.json();\r",
+									"pm.expect(json.message).to.eql(\"USER_DELETED\");\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/me",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete /api/workspaces/:workspaceId 워크스페이스 삭제",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"200\", ()=> pm.expect(pm.response.code).to.equal(200));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Negative Cases",
+			"item": [
+				{
+					"name": "로그아웃",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"logout ok\", () => {\r",
+									"  pm.expect(pm.response.code).to.be.within(200,299);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/logout",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "401 로그인 실패 (wrong password)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login wrong pw: 401\", () => pm.expect(pm.response.code).to.equal(401));\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"email\": \"{{EMAIL}}\", \"password\": \"wrong_password\" }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/auth/login",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "401 로그인 정보 없음",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"401 unauthorized\", () => {\r",
+									"  pm.expect(pm.response.code).to.equal(401);\r",
+									"});\r",
+									"\r",
+									"const e = pm.response.json();\r",
+									"pm.test(\"error format\", () => {\r",
+									"  pm.expect(e).to.have.property(\"timestamp\");\r",
+									"  pm.expect(e).to.have.property(\"path\");\r",
+									"  pm.expect(e).to.have.property(\"status\", 401);\r",
+									"  pm.expect(e).to.have.property(\"code\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/users/me",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "403 워크스페이스 멤버 아님",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/workspaces/{{workspaceId}}",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"{{workspaceId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					"pm.request.url = pm.request.url.toString().replace(\"{{BASE_URL}}\", pm.environment.get(\"BASE_URL\"));\r",
+					"if (!pm.collectionVariables.get(\"rand\")) {\r",
+					"  pm.collectionVariables.set(\"rand\", String(Date.now()));\r",
+					"}\r",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					"pm.test(\"Response has JSON\", function () {\r",
+					"  pm.response.to.have.header(\"Content-Type\");\r",
+					"});\r",
+					"\r",
+					"// 에러 포맷 검증(에러일 때만)\r",
+					"if (pm.response.code >= 400) {\r",
+					"  const body = pm.response.json();\r",
+					"  pm.test(\"Error format: timestamp/path/status/code/message\", function () {\r",
+					"    pm.expect(body).to.have.property(\"timestamp\");\r",
+					"    pm.expect(body).to.have.property(\"path\");\r",
+					"    pm.expect(body).to.have.property(\"status\");\r",
+					"    pm.expect(body).to.have.property(\"code\");\r",
+					"    pm.expect(body).to.have.property(\"message\");\r",
+					"  });\r",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "rand",
+			"value": ""
+		}
+	]
+}
