@@ -138,12 +138,38 @@ async function loginOrSignupWithProvider({ provider, providerUid, email, nicknam
  *     responses:
  *       200:
  *         description: Social login success (cookies set)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [message, user]
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "social login success"
+ *                 user:
+ *                   type: object
+ *                   required: [id, email, name, role]
+ *                   properties:
+ *                     id: { type: integer, example: 1 }
+ *                     email: { type: string, nullable: true, example: "user@test.com" }
+ *                     name: { type: string, example: "user" }
+ *                     role: { type: string, example: "USER" }
  *       400:
- *         description: BAD_REQUEST
+ *         description: BAD_REQUEST (e.g., idToken required). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       401:
- *         description: UNAUTHORIZED
+ *         description: UNAUTHORIZED (invalid firebase token / firebase uid missing)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
- *         description: INTERNAL_SERVER_ERROR
+ *         description: INTERNAL_SERVER_ERROR (firebase social login error)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.post(
   "/social/firebase",
@@ -204,6 +230,14 @@ router.post(
  *     tags: [Auth]
  *     summary: Start Kakao OAuth (redirect)
  *     description: Set oauth state cookie and redirect to Kakao authorize URL.
+ *     responses:
+ *       302:
+ *         description: Redirect to Kakao authorize URL
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR (kakao env missing)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get(
   "/social/kakao/start",
@@ -248,6 +282,34 @@ router.get(
  *   get:
  *     tags: [Auth]
  *     summary: Kakao OAuth callback (code 처리 후 redirect)
+ *     description: Exchange code for Kakao access token, fetch user info, login/signup, set cookies, then redirect to frontend.
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       302:
+ *         description: Redirect to frontend after login (cookies set)
+ *       400:
+ *         description: BAD_REQUEST (invalid oauth state). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED (kakao auth failed / missing kakao id/access token)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / UNKNOWN_ERROR (env missing or external fetch error or server error)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router.get(
   "/social/kakao/callback",
