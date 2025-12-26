@@ -281,9 +281,6 @@ router
  *   patch:
  *     tags: [Comments]
  *     summary: Update comment
- *   delete:
- *     tags: [Comments]
- *     summary: Delete comment (soft delete)
  *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - in: path
@@ -292,14 +289,6 @@ router
  *         schema: { type: integer }
  *       - in: path
  *         name: projectId
- *         required: true
- *         schema: { type: integer }
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema: { type: integer }
- *       - in: path
- *         name: commentId
  *         required: true
  *         schema: { type: integer }
  *     requestBody:
@@ -331,7 +320,6 @@ router
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
-
  *       404:
  *         description: RESOURCE_NOT_FOUND (project not found / task not found / comment not found)
  *         content:

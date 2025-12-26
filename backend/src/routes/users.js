@@ -195,9 +195,6 @@ router
  *   post:
  *     tags: [Users]
  *     summary: Create user (ADMIN only)
- *   get:
- *     tags: [Users]
- *     summary: List users (ADMIN only)
  *     description: role은 "ADMIN"만 인정, 그 외는 "USER"로 저장.
  *     security: [{ cookieAuth: [] }]
  *     requestBody:

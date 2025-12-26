@@ -3,7 +3,8 @@ import bcrypt from "bcrypt";
 import { models } from "../models/index.js";
 import { redis } from "../config/redis.js";
 import { rateLimit } from "../middlewares/rateLimit.js";
-
+import { refreshTtlSeconds } from "../utils/jwt.js";
+import { sequelize } from "../models/index.js";
 import {
   signAccessToken,
   signRefreshToken,
@@ -12,6 +13,8 @@ import {
   REFRESH_COOKIE_NAME,
   getAccessCookieOptions,
   getRefreshCookieOptions,
+  verifyRefreshToken,
+  verifyAccessToken,
 } from "../utils/jwt.js";
 
 import { sendOk, sendError, sendCreated } from "../utils/http.js";
@@ -220,14 +223,8 @@ router.post(
       const refresh = signRefreshToken({ sub: String(u.id), role: u.role });
       const expiresAt = new Date(Date.now() + refreshTtlSeconds() * 1000);
       // ✅ Redis 세션 저장 (requireSession에서 사용)
-      await redis.set(`session:${user.id}`, "1");
+      await redis.set(`session:${u.id}`, "1");
 
-      // ✅ Refresh token DB 저장
-      await UserRefreshToken.create({
-        user_id: user.id,
-        token_hash: hashToken(refreshToken),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
       await UserRefreshToken.create({
         user_id: u.id,
         token_hash: hashToken(refresh),
@@ -322,15 +319,15 @@ router.post("/refresh", async (req, res) => {
     });
 
       // 표준 코드만 사용
-      if (!row) throw Object.assign(new Error("not found"), { _http: 401, _code: "UNAUTHORIZED" });
-      if (row.revoked_at) throw Object.assign(new Error("revoked"), { _http: 401, _code: "UNAUTHORIZED" });
+      if (!row) throw Object.assign(new Error("invalid refresh token"), { code: "UNAUTHORIZED" });
+      if (row.revoked_at) throw Object.assign(new Error("revoked"), { code: "UNAUTHORIZED" });
       if (new Date(row.expires_at).getTime() < Date.now()) {
-        throw Object.assign(new Error("expired"), { _http: 401, _code: "TOKEN_EXPIRED" });
+        throw Object.assign(new Error("expired"), { code: "TOKEN_EXPIRED" });
       }
       
       const u = await User.findOne({ where: { id: userId }, transaction: t, lock: t.LOCK.UPDATE });
-      if (!u) throw Object.assign(new Error("user not found"), { _http: 401, _code: "UNAUTHORIZED" });
-      if (u.status !== "ACTIVE") throw Object.assign(new Error("user not active"), { _http: 403, _code: "FORBIDDEN" });
+      if (!u) throw Object.assign(new Error("user not found"), { code: "UNAUTHORIZED" });
+      if (u.status !== "ACTIVE") throw Object.assign(new Error("user not active"), { code: "FORBIDDEN" });
 
       await row.update({ revoked_at: new Date() }, { transaction: t });
 
@@ -355,11 +352,12 @@ router.post("/refresh", async (req, res) => {
     res.cookie(REFRESH_COOKIE_NAME, result.newRefresh, getRefreshCookieOptions());
     return sendOk(res, { message: "refreshed", user: userPublic(result.u) });
   } catch (e) {
-    const code = e?._code ?? "INTERNAL_SERVER_ERROR";
+    const code = e?.code ?? "INTERNAL_SERVER_ERROR";
 
     const msgMap = {
       TOKEN_EXPIRED: "refresh token expired",
       UNAUTHORIZED: "invalid refresh token",
+      FORBIDDEN: "forbidden",
       INTERNAL_SERVER_ERROR: "failed to refresh token",
     };
 
@@ -402,7 +400,9 @@ router.post("/logout", async (req, res) => {
         { where: { token_hash: h, revoked_at: null } }
 );
     }
-
+    if (req.user?.id) {
+      await redis.del(`session:${req.user.id}`);
+    }
     // ✅ path 통일(대부분 "/"가 안전)
     res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
     res.clearCookie(REFRESH_COOKIE_NAME, { path: "/" });

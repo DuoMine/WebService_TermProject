@@ -2,7 +2,7 @@ import express from "express";
 import { Op } from "sequelize";
 import { models, sequelize } from "../models/index.js";
 import { requireSession } from "../middlewares/requireSession.js";
-
+import { requireAuth } from "../middlewares/requireAuth.js";
 import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
 import { requireWorkspaceOwner } from "../middlewares/requireWorkspaceMember.js";
 import { parsePagination, parseSort, parseFilters, toPageResult } from "../utils/listQuery.js";

@@ -56,9 +56,6 @@ async function loadProjectOr404(req, res) {
  *     summary: List tasks in project
  *     description: 'deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,status,assigneeId,dueFrom/dueTo). Allowed sort fields: id, created_at, due_at, status, priority'
  *     security: [{ cookieAuth: [] }]
- *   post:
- *     tags: [Tasks]
- *     summary: Create task
  *     parameters:
  *       - in: path
  *         name: workspaceId
@@ -108,7 +105,6 @@ async function loadProjectOr404(req, res) {
  *             schema:
  *               type: object
  *               required: [content, page, size, totalElements, totalPages]
-
  *               properties:
  *                 content:
  *                   type: array
@@ -139,7 +135,7 @@ async function loadProjectOr404(req, res) {
  *         content:
  *           application/json:
  *             schema: { $ref: "#/components/schemas/ErrorResponse" }
-
+ *
  *   post:
  *     tags: [Tasks]
  *     summary: Create task

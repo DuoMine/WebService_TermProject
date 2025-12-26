@@ -34,7 +34,7 @@ export function rateLimit({
 
       // 🔹 초과 시 차단
       if (current > max) {
-        return sendError(res, 429, "TOO_MANY_REQUESTS", "rate limit exceeded");
+        return sendError(res, "TOO_MANY_REQUESTS", "rate limit exceeded");
       }
 
       return next();

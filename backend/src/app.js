@@ -33,7 +33,7 @@ app.use(cookieParser());
 app.use(
   rateLimit({
     windowMs: 60_000,
-    limit: 120,
+    limit: 1200,
     standardHeaders: true,
     legacyHeaders: false,
     store: new RedisStore({
@@ -51,7 +51,14 @@ app.use("/api/auth", authRouter, authSocialRouter);
  */
 
 // 1. 유저 관련 캐싱 (내 정보 등)
-app.use("/api/users", cache("users", 300), clearCache("users"), usersRouter);
+app.get(
+  "/api/users/me",
+  requireAuth,
+  cache("users", 300),
+  usersRouter
+);
+
+app.use("/api/users", usersRouter);
 
 // 2. 워크스페이스 스코프 미들웨어
 app.use("/api/workspaces/:workspaceId", requireAuth, requireWorkspaceMember());
