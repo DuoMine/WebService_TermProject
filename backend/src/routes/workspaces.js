@@ -1,11 +1,6 @@
 import express from "express";
 import { Op } from "sequelize";
 import { models, sequelize } from "../models/index.js";
-
-/**
- * 🔽 기존 JWT 인증 (유지)
- * import { requireAuth } from "../middlewares/requireAuth.js";
- */
 import { requireSession } from "../middlewares/requireSession.js";
 
 import { sendOk, sendError, sendCreated, sendNoContent } from "../utils/http.js";
@@ -29,10 +24,105 @@ const router = express.Router();
  *     summary: Create workspace
  *     description: 생성자는 owner_id가 되며, workspace_members에도 자동 추가된다.
  *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string, example: "team-a" }
+ *               description: { type: string, nullable: true, example: "our workspace" }
+ *     responses:
+ *       201:
+ *         description: created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [workspace]
+ *               properties:
+ *                 workspace:
+ *                   $ref: "#/components/schemas/Workspace"
+ *       400:
+ *         description: BAD_REQUEST (name required)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   get:
+ *     tags: [Workspaces]
+ *     summary: List my workspaces
+ *     description: '내가 속한(멤버인) 워크스페이스 목록(soft delete 제외). Pagination(1-base) + sort + filters(keyword,dateFrom/dateTo). Allowed sort fields: id, created_at, name'
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+
+ *         description: Page number (1-base)
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: Page size (max 50)
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format "field,ASC|DESC" (allowed: id, created_at, name)'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: Search by workspace name/description (LIKE)
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: created_at >= dateFrom (YYYY-MM-DD)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: created_at <= dateTo (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items: { $ref: "#/components/schemas/Workspace" }
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/")
-  .post(requireSession, async (req, res) => {
+  .post(requireAuth, requireSession, async (req, res) => {
     const userId = req.auth.userId;
     const { name, description } = req.body;
     if (!name) return sendError(res, "BAD_REQUEST", "name required");
@@ -52,19 +142,15 @@ router
 
       return sendCreated(res, { workspace: ws });
     } catch (e) {
+      try {
+        await t.rollback();
+      } catch (re) {
+        console.error("rollback error:", re);
+      }
       console.error("[POST /workspaces] error:", e);
       return sendError(res, "INTERNAL_SERVER_ERROR", "internal server error");
     }
   })
-
-  /**
-   * @swagger
-   * /workspaces:
-   *   get:
-   *     tags: [Workspaces]
-   *     summary: List my workspaces
-   *     security: [{ cookieAuth: [] }]
-   */
   .get(requireSession, async (req, res) => {
     const userId = req.auth.userId;
 
@@ -118,7 +204,118 @@ router
  * 가 이미 적용되어 있음.
  * => req.workspace가 세팅되어 있고, 멤버가 아니면 여기까지 못 들어온다.
  */
-
+/**
+ * @swagger
+ * /workspaces/{workspaceId}:
+ *   get:
+ *     tags: [Workspaces]
+ *     summary: Get workspace detail
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [workspace]
+ *               properties:
+ *                 workspace:
+ *                   $ref: "#/components/schemas/Workspace"
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   patch:
+ *     tags: [Workspaces]
+ *     summary: Update workspace (OWNER)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string, example: "team-a-renamed" }
+ *               description: { type: string, nullable: true, example: "updated" }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [workspace]
+ *               properties:
+ *                 workspace:
+ *                   $ref: "#/components/schemas/Workspace"
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember / requireWorkspaceOwner)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   delete:
+ *     tags: [Workspaces]
+ *     summary: Delete workspace (OWNER, soft delete)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204:
+ *         description: No Content (deleted)
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember / requireWorkspaceOwner)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ */
 router
   .route("/:workspaceId")
   .get(async (req, res) => {
@@ -139,6 +336,141 @@ router
     return sendNoContent(res);
   });
 
+/**
+ * @swagger
+ * /workspaces/{workspaceId}/members:
+ *   get:
+ *     tags: [Workspaces]
+ *     summary: List workspace members
+ *     description: 'Pagination(1-base) + sort + filters(keyword,role). Allowed sort fields: created_at, user_id'
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: Page number (1-base)
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: Page size (max 50)
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,ASC" }
+ *         description: 'Sort format "field,ASC|DESC" (allowed: created_at, user_id)'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: Search by user name/email (LIKE)
+ *       - in: query
+ *         name: role
+ *         schema: { type: string, enum: [USER, ADMIN] }
+ *         description: Filter by user.role
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       workspace_id: { type: integer, example: 1 }
+ *                       user_id: { type: integer, example: 2 }
+ *                       created_at: { type: string, example: "2025-12-22T10:00:00.000Z" }
+ *                       user:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer, example: 2 }
+ *                           email: { type: string, example: "u2@test.com" }
+ *                           name: { type: string, example: "user2" }
+ *                           role: { type: string, example: "USER" }
+ *                           status: { type: string, example: "ACTIVE" }
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,ASC" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   post:
+ *     tags: [Workspaces]
+ *     summary: Add member to workspace (OWNER)
+ *     description: owner는 이미 멤버로 간주되며, 중복 추가는 DUPLICATE_RESOURCE.
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId]
+ *             properties:
+ *               userId: { type: integer, example: 2 }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [workspace]
+ *               properties:
+ *                 workspace:
+ *                   $ref: "#/components/schemas/Workspace"
+ *       400:
+ *         description: BAD_REQUEST (userId required)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember / requireWorkspaceOwner)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       409:
+ *         description: DUPLICATE_RESOURCE (owner already member / already member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ */
 router
   .route("/:workspaceId/members")
   .get(async (req, res) => {
@@ -196,7 +528,47 @@ router
     await models.WorkspaceMember.create({ workspace_id: workspaceId, user_id: userId });
     return sendOk(res, { workspace: req.workspace });
   });
-
+/**
+ * @swagger
+ * /workspaces/{workspaceId}/members/{userId}:
+ *   delete:
+ *     tags: [Workspaces]
+ *     summary: Remove member from workspace (OWNER)
+ *     description: owner는 제거할 수 없다.
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204:
+ *         description: No Content (removed)
+ *       400:
+ *         description: BAD_REQUEST (invalid userId / cannot remove owner)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireWorkspaceMember / requireWorkspaceOwner)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ */
 router.delete("/:workspaceId/members/:userId", requireWorkspaceOwner(), async (req, res) => {
   const workspaceId = req.workspace.id;
   const userId = Number(req.params.userId);
