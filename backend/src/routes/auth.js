@@ -50,7 +50,7 @@ function userPublic(u) {
  */
 /**
  * @swagger
- * /api/auth/signup:
+ * /auth/signup:
  *   post:
  *     tags: [Auth]
  *     summary: Sign up
@@ -135,7 +135,7 @@ router.post("/signup", async (req, res) => {
 });
 /**
  * @swagger
- * /api/auth/login:
+ * /auth/login:
  *   post:
  *     tags: [Auth]
  *     summary: Login
@@ -244,7 +244,7 @@ router.post(
 );
 /**
  * @swagger
- * /api/auth/refresh:
+ * /auth/refresh:
  *   post:
  *     tags: [Auth]
  *     summary: Refresh access token (rotation)
@@ -367,7 +367,7 @@ router.post("/refresh", async (req, res) => {
 
 /**
  * @swagger
- * /api/auth/logout:
+ * /auth/logout:
  *   post:
  *     tags: [Auth]
  *     summary: Logout
