@@ -33,7 +33,7 @@ app.use(cookieParser());
 app.use(
   rateLimit({
     windowMs: 60_000,
-    limit: 1200,
+    limit: 100,
     standardHeaders: true,
     legacyHeaders: false,
     store: new RedisStore({
