@@ -65,9 +65,147 @@ async function loadProjectTaskOr404(req, res) {
  *     summary: List comments in task
  *     description: 'deleted_at=null만 반환. Pagination(1-base) + sort + filters(keyword,authorId,dateFrom/dateTo). Allowed sort fields: id, created_at, user_id'
  *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,ASC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, user_id'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by comment content (LIKE)'
+ *       - in: query
+ *         name: authorId
+ *         schema: { type: integer }
+ *         description: 'Filter by user_id (author)'
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string, format: date }
+ *         description: 'created_at >= dateFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'created_at <= dateTo (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string, format: date }
+ *         description: 'created_at <= dateTo (YYYY-MM-DD)'
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Comment"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,ASC" }
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
  *   post:
  *     tags: [Comments]
  *     summary: Create comment
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content: { type: string, example: "Looks good." }
+ *     responses:
+ *       201:
+ *         description: created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [comment]
+ *               properties:
+ *                 comment:
+ *                   $ref: "#/components/schemas/Comment"
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / content required). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/")
@@ -146,6 +284,109 @@ router
  *   delete:
  *     tags: [Comments]
  *     summary: Delete comment (soft delete)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content: { type: string, example: "Updated comment." }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [comment]
+ *               properties:
+ *                 comment:
+ *                   $ref: "#/components/schemas/Comment"
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid commentId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / comment not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   delete:
+ *     tags: [Comments]
+ *     summary: Delete comment (soft delete)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204:
+ *         description: No Content (soft deleted)
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid commentId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found / comment not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/:commentId")

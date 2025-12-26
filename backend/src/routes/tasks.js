@@ -59,6 +59,146 @@ async function loadProjectOr404(req, res) {
  *   post:
  *     tags: [Tasks]
  *     summary: Create task
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, due_at, status, priority'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by title/description (LIKE)'
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [TODO, DOING, DONE] }
+ *         description: 'Filter by task status'
+ *       - in: query
+ *         name: assigneeId
+ *         schema: { type: integer }
+ *         description: 'Filter by assignee_id'
+ *       - in: query
+ *         name: dueFrom
+ *         schema: { type: string, format: date }
+ *         description: 'due_at >= dueFrom (YYYY-MM-DD)'
+ *       - in: query
+ *         name: dueTo
+ *         schema: { type: string, format: date }
+ *         description: 'due_at <= dueTo (YYYY-MM-DD)'
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
+
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Task"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+ *   post:
+ *     tags: [Tasks]
+ *     summary: Create task
+ *     description: status/priority는 지정하지 않으면 TODO/MEDIUM으로 저장.
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title]
+ *             properties:
+ *               title: { type: string, example: "Implement swagger docs" }
+ *               description: { type: string, nullable: true, example: "..." }
+ *               status: { type: string, enum: [TODO, DOING, DONE], example: "TODO" }
+ *               priority: { type: string, enum: [LOW, MEDIUM, HIGH], example: "MEDIUM" }
+ *               dueAt: { type: string, nullable: true, example: "2025-12-26T12:00:00.000Z" }
+ *               assigneeId: { type: integer, nullable: true, example: 2 }
+ *     responses:
+ *       201:
+ *         description: created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [task]
+ *               properties:
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / title required / invalid status / invalid priority). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/")
@@ -155,12 +295,155 @@ router
  *   get:
  *     tags: [Tasks]
  *     summary: Get task detail
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [task]
+ *               properties:
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ * 
  *   patch:
  *     tags: [Tasks]
  *     summary: Update task
+ *     description: status는 TODO/DOING/DONE, priority는 LOW/MEDIUM/HIGH만 허용.
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string, example: "Updated title" }
+ *               description: { type: string, nullable: true, example: "..." }
+ *               status: { type: string, enum: [TODO, DOING, DONE], example: "DOING" }
+ *               priority: { type: string, enum: [LOW, MEDIUM, HIGH], example: "HIGH" }
+ *               dueAt: { type: string, nullable: true, example: "2025-12-26T12:00:00.000Z" }
+ *               assigneeId: { type: integer, nullable: true, example: 3 }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [task]
+ *               properties:
+ *                 task:
+ *                   $ref: "#/components/schemas/Task"
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId / invalid status / invalid priority). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
  *   delete:
  *     tags: [Tasks]
  *     summary: Delete task (soft delete)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: workspaceId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204:
+ *         description: No Content (soft deleted)
+ *       400:
+ *         description: BAD_REQUEST (invalid projectId / invalid taskId). VALIDATION_FAILED may include details.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( not workspace member)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: RESOURCE_NOT_FOUND (project not found / task not found)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/:taskId")
