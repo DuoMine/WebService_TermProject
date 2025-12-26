@@ -47,20 +47,87 @@ function userPublic(u) {
  *                   $ref: "#/components/schemas/User"
  *       401:
  *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       404:
  *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  *       500:
  *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
- *
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ * 
  *   patch:
  *     tags: [Users]
  *     summary: Update my profile (name)
  *     security: [{ cookieAuth: [] }]
- *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string, minLength: 2, example: "new name" }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [user]
+ *               properties:
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
+ *       400:
+ *         description: VALIDATION_FAILED (details 포함 가능)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ * 
  *   delete:
  *     tags: [Users]
  *     summary: Delete my account (soft delete)
  *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       204:
+ *         description: No Content (deleted)
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/me")
@@ -131,6 +198,119 @@ router
  *   get:
  *     tags: [Users]
  *     summary: List users (ADMIN only)
+ *     description: role은 "ADMIN"만 인정, 그 외는 "USER"로 저장.
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, name]
+ *             properties:
+ *               email: { type: string, example: "newuser@test.com" }
+ *               name: { type: string, minLength: 2, example: "new user" }
+ *               role: { type: string, enum: [USER, ADMIN], example: "USER" }
+ *     responses:
+ *       201:
+ *         description: created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [user]
+ *               properties:
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
+ *       400:
+ *         description: VALIDATION_FAILED (details 포함 가능)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       409:
+ *         description: DUPLICATE_RESOURCE (email already exists)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
+ *   get:
+ *     tags: [Users]
+ *     summary: List users (ADMIN only)
+ *     description: 'Pagination(1-base) + sort + filters(keyword/role/status). 기본은 DELETED 제외. Allowed sort fields: id, created_at, updated_at, email, name, role, status'
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1, minimum: 1 }
+ *         description: 'Page number (1-base)'
+ *       - in: query
+ *         name: size
+ *         schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+ *         description: 'Page size (max 50)'
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "created_at,DESC" }
+ *         description: 'Sort format: field,(ASC|DESC). Allowed fields: id, created_at, updated_at, email, name, role, status'
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *         description: 'Search by name or email (LIKE)'
+ *       - in: query
+ *         name: role
+ *         schema: { type: string, enum: [USER, ADMIN] }
+ *         description: 'Filter by role'
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [ACTIVE, SUSPENDED] }
+ *         description: 'Filter by status (DELETED is excluded by default)'
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [content, page, size, totalElements, totalPages]
+ *               properties:
+ *                 content:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/User"
+ *                 page: { type: integer, example: 1 }
+ *                 size: { type: integer, example: 20 }
+ *                 totalElements: { type: integer, example: 153 }
+ *                 totalPages: { type: integer, example: 8 }
+ *                 sort: { type: string, example: "created_at,DESC" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/")
@@ -209,13 +389,142 @@ router
  * /users/{id}:
  *   get:
  *     tags: [Users]
- *     summary: Get user by id (ADMIN only)
+ *     summary: Get user by id (ADMIN only) 
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [user]
+ *               properties:
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
  *   patch:
  *     tags: [Users]
  *     summary: Update user by id (ADMIN only)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 example: "updated name"
+ *               role:
+ *                 type: string
+ *                 enum: [USER, ADMIN]
+ *                 example: "USER"
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, SUSPENDED, DELETED]
+ *                 example: "ACTIVE"
+ *     responses:
+ *       200:
+ *         description: ok
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [user]
+ *               properties:
+ *                 user:
+ *                   $ref: "#/components/schemas/User"
+ *       400:
+ *         description: VALIDATION_FAILED (details 포함 가능)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *
  *   delete:
  *     tags: [Users]
  *     summary: Delete user by id (ADMIN only, soft delete)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       204:
+ *         description: No Content (deleted)
+ *       401:
+ *         description: UNAUTHORIZED ( requireAuth)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       403:
+ *         description: FORBIDDEN ( requireAdmin)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       404:
+ *         description: USER_NOT_FOUND
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
+ *       500:
+ *         description: INTERNAL_SERVER_ERROR / DATABASE_ERROR / UNKNOWN_ERROR
+ *         content:
+ *           application/json:
+ *             schema: { $ref: "#/components/schemas/ErrorResponse" }
  */
 router
   .route("/:id")
