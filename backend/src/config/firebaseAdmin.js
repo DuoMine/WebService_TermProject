@@ -9,10 +9,10 @@ function getServiceAccount() {
   return JSON.parse(trimmed);
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(getServiceAccount()),
-  });
-}
+// if (!admin.apps.length) {
+//   admin.initializeApp({
+//     credential: admin.credential.cert(getServiceAccount()),
+//   });
+// }
 
 export const firebaseAdmin = admin;

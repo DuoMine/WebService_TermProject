@@ -10,7 +10,7 @@
     "test": "cross-env NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
     "migrate": "node ./scripts/migrate.js",
     "seed": "node ./scripts/seed.js",
-    "db:reset": "npm run migrate && npm run seed"  
+    "db:reset": "npm run migrate && npm run seed"
   },
   "jest": {
     "testEnvironment": "node",

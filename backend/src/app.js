@@ -1,4 +1,3 @@
-// src/app.js
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -9,6 +8,9 @@ import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { requireAuth } from "./middlewares/requireAuth.js";
 import { requireWorkspaceMember } from "./middlewares/requireWorkspaceMember.js";
+import { cache, clearCache } from "./middlewares/cache.js"; // 캐시 미들웨어 추가
+
+// 라우터 import
 import authRouter from "./routes/auth.js";
 import healthRouter from "./routes/health.js";
 import authSocialRouter from "./routes/authSocial.js";
@@ -23,16 +25,11 @@ import { swaggerSpec } from "./docs/swagger.js";
 
 export const app = express();
 
-app.use(
-  cors({
-    origin: env.CORS_ORIGIN,
-    credentials: true,
-  })
-);
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
-// ✅ Redis 기반 전역 rate limit (필수요건 증빙용)
+// Redis 기반 전역 Rate Limit
 app.use(
   rateLimit({
     windowMs: 60_000,
@@ -42,45 +39,59 @@ app.use(
     store: new RedisStore({
       sendCommand: (...args) => redis.call(...args),
     }),
-    handler: (req, res) =>
-      res.status(429).json({
-        timestamp: new Date().toISOString(),
-        path: req.originalUrl,
-        status: 429,
-        code: "TOO_MANY_REQUESTS",
-        message: "too many requests",
-      }),
   })
 );
 
 app.get("/", (req, res) => res.json({ ok: true }));
-
 app.use("/api/health", healthRouter);
-
 app.use("/api/auth", authRouter, authSocialRouter);
-app.use("/api/users", usersRouter);
 
 /**
- * 🔐 workspace 스코프 전역 적용
- * - /api/workspaces/:workspaceId 로 시작하는 모든 요청은
- *   requireAuth + requireWorkspaceMember 통과해야 한다.
- * - /api/workspaces (목록/생성)은 workspaceId가 없으니 여기 적용 안 됨
+ * 🔐 캐싱 전략 적용 (기존 라우터 파일 수정 없이 주입)
  */
+
+// 1. 유저 관련 캐싱 (내 정보 등)
+app.use("/api/users", cache("users", 300), clearCache("users"), usersRouter);
+
+// 2. 워크스페이스 스코프 미들웨어
 app.use("/api/workspaces/:workspaceId", requireAuth, requireWorkspaceMember());
 
-/**
- * 라우터 마운트
- * - workspacesRouter: /api/workspaces + /api/workspaces/:workspaceId/... 둘 다 포함
- * - 그 외는 workspaceId 아래로만 노출
- */
-app.use("/api/workspaces", workspacesRouter);
-app.use("/api/workspaces/:workspaceId/projects", projectsRouter);
-app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", tasksRouter);
-app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentsRouter);
-app.use("/api/workspaces/:workspaceId", tagsRouter);
+// 3. 워크스페이스 자체 라우터
+app.use("/api/workspaces", cache("workspaces", 60), clearCache("workspaces"), workspacesRouter);
+
+// 4. 프로젝트 라우터
+app.use(
+  "/api/workspaces/:workspaceId/projects",
+  cache("projects", 60),
+  clearCache("projects"),
+  projectsRouter
+);
+
+// 5. 태스크 라우터
+app.use(
+  "/api/workspaces/:workspaceId/projects/:projectId/tasks",
+  cache("tasks", 30),
+  clearCache("tasks"),
+  tasksRouter
+);
+
+// 6. 댓글 라우터
+app.use(
+  "/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments",
+  cache("comments", 10),
+  clearCache("comments"),
+  commentsRouter
+);
+
+// 7. 태그 라우터
+app.use(
+  "/api/workspaces/:workspaceId",
+  cache("tags", 60),
+  clearCache("tags"),
+  tagsRouter
+);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 app.use(errorHandler);
 
 export default app;
